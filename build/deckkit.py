@@ -128,7 +128,12 @@ def text_units(s):
 def _norm(items):
     if isinstance(items, str):
         items = [items]
-    return [(it if isinstance(it, tuple) else (it, 0)) for it in items]
+    out = []
+    for it in items:
+        text, lvl = it if isinstance(it, tuple) else (it, 0)
+        for line in str(text).split("\n"):
+            out.append((line, lvl))
+    return out
 
 
 def est_height(items, w_in, size, spacing=1.2, gap=0.45, sub_ratio=0.85, indent=0.3):
@@ -841,6 +846,11 @@ class Deck:
         return ctx
 
     # ---------------------------------------------------------------- 공통 구성
+    @staticmethod
+    def _join(items):
+        items = [items] if isinstance(items, str) else items
+        return " / ".join(plain(str(i[0] if isinstance(i, tuple) else i)) for i in items)
+
     def question(self, q, sub="", notes=None):
         """이번 주의 질문 (템플릿 구역 슬라이드)."""
         return self.section(f"Week {self.week} · 이번 주의 질문\n{q}", sub, notes=notes)
@@ -850,6 +860,8 @@ class Deck:
 
     def bridge(self, learned, remaining, question, notes=None, title="지난 주에서 이번 주로"):
         """지난 주 배운 것 → 남은 문제 → 이번 주 질문."""
+        notes = notes or (f"지난 주 복습 — {self._join(learned)}. 하지만 남은 문제가 있다: {self._join(remaining)}. "
+                          f"이번 주는 이 질문에서 출발한다: {self._join(question)}. 학생에게 지난 주 내용을 한 문장씩 먼저 말해 보게 한다.")
         ctx = self.slide(title, lead="매 주는 지난 주가 남긴 문제에서 출발한다", stage="도입", notes=notes)
         ctx.flow([{"head": "지난 주에 배운 것", "body": learned},
                   {"head": "아직 풀리지 않은 문제", "body": remaining, "tone": "accent"},
@@ -860,6 +872,8 @@ class Deck:
 
     def roadmap(self, parts, goals, notes=None):
         """과정 지도(현재 주 강조) + 오늘의 순서 + 학습 목표."""
+        notes = notes or (f"과정 지도에서 오늘은 {self.week}번째 질문이다. 오늘의 순서: {self._join(parts)}. "
+                          f"끝나면 할 수 있어야 하는 것: {self._join(goals)}. 수업 마지막에 이 목표를 셀프 체크로 다시 확인한다.")
         ctx = self.slide("오늘의 지도", lead=f"여섯 질문 중 {self.week}번째 — 오늘의 순서와 목표",
                          stage="도입", notes=notes)
         top, bot = ctx.area.top(2.05, gap=0.3)
@@ -879,11 +893,14 @@ class Deck:
 
     def glossary(self, rows, notes=None):
         """오늘 새로 나오는 용어: (용어, 한 줄 뜻, 비유/예)."""
+        notes = notes or ("오늘 처음 나오는 용어들. 외울 필요는 없고, 설명 중 막히면 이 표로 돌아온다. "
+                          + " / ".join(f"{plain(r[0])}: {plain(r[1])}" for r in rows))
         ctx = self.slide("오늘의 새 용어", lead="낯선 단어를 먼저 한 번 보고 시작한다", stage="도입", notes=notes)
         ctx.table(["용어", "한 줄 뜻", "비유 · 예"], rows, widths=[2.2, 5.2, 4.9], size=15)
         return ctx
 
     def summary(self, items, notes=None, title="한 장 요약"):
+        notes = notes or ("오늘의 요약. 각 줄을 학생이 자기 말로 다시 설명하게 한다: " + self._join(items))
         ctx = self.slide(title, lead="오늘 배운 것을 한 줄씩", stage="정리", notes=notes)
         n = len(items)
         gap = 0.14
@@ -897,11 +914,15 @@ class Deck:
         return ctx
 
     def misconceptions(self, rows, notes=None):
+        notes = (notes + " " if notes else "") + ("각 문장이 왜 틀렸는지 계산으로 설명하게 한다. "
+                 + " / ".join(f"{plain(a)} → {plain(b)}" for a, b in rows))
         ctx = self.slide("흔한 오해 바로잡기", lead="틀린 문장을 계산의 언어로 고쳐 쓴다", stage="검증", notes=notes)
         ctx.table(["자주 듣는 말", "더 정확한 설명"], rows, widths=[4.6, 7.7], size=15)
         return ctx
 
     def homework(self, items, notes=None, lab=None):
+        notes = (notes + " " if notes else "") + ("과제는 ‘논문 읽고 정리’ 대신 제출 결과가 분명한 질문으로 준다(원자료 운영안). "
+                 + " / ".join(f"{plain(h)}: {plain(b)}" for h, b in items))
         ctx = self.slide("이번 주 과제", lead="제출물이 분명한 과제 — 결과를 보기 전에 먼저 예측해 적는다",
                          stage="실습", notes=notes)
         if lab:
@@ -913,12 +934,16 @@ class Deck:
         return ctx
 
     def references(self, rows, notes=None):
+        notes = notes or ("번호는 원자료 참고문헌 번호. 처음부터 모든 실험을 읽기보다 표에 적은 절과 그림만 먼저 읽는다. "
+                          + " / ".join(plain(r[0]) for r in rows))
         ctx = self.slide("참고 자료", lead="원문은 필요한 절만 골라 읽는다", stage="정리", notes=notes)
         ctx.table(["자료", "이번 주에 읽을 부분"], rows, widths=[7.3, 5.0], size=14)
         return ctx
 
     def handoff(self, solved, remaining, next_q, notes=None):
         """이번 주가 해결한 것 / 남긴 문제 / 다음 주 질문."""
+        notes = (notes + " " if notes else "") + (f"이번 주에 해결한 것: {self._join(solved)}. 남은 문제: {self._join(remaining)}. "
+                 f"다음: {self._join(next_q)}.")
         ctx = self.slide("남은 문제와 다음 질문", lead="답은 새 문제를 남긴다 — 다음 주는 여기서 출발한다",
                          stage="정리", notes=notes)
         ctx.flow([{"head": "이번 주에 해결한 것", "body": solved},
