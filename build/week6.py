@@ -19,7 +19,7 @@ d.question("참조만으로\n시퀀스 모델을 만들면?",
 
 d.bridge(["**Attention**: 점수 → softmax → 가중합", "Q · K · V와 **Multi-head**, shape (B, H, N, d_h)", "Self-attention + **위치 인코딩**"],
          ["attention만으로는 **토큰별 비선형 변환**이 없다", "깊게 쌓기 · 정답을 **훔쳐보지 않고** 학습하기 · **생성**하기"],
-         ["**참조만으로 시퀀스 모델을 만들면?**", "조립 → 학습 → 생성 → 그 이후"])
+         ["**참조만으로**", "**시퀀스 모델을 만들면?**", "조립 → 학습 → 생성 → 그 이후"])
 
 d.roadmap(["Encoder 한 층 완성: FFN · Residual · LayerNorm", "Decoder: 정답을 훔쳐보지 않고 배우기",
            "입력부터 logits까지, 파라미터 세기", "학습: 확률을 정답 쪽으로", "생성과 비용: KV Cache · 연산량 · 메모리",
@@ -326,11 +326,11 @@ s = d.slide("KV Cache: 바뀌지 않는 것을 보관", lead="과거 토큰의 �
                   "Q는 현재 토큰에 대해서만 필요하므로 cache하지 않는다. Encoder–Decoder에서는 cross-attention의 K, V도 source가 고정이면 재사용. "
                   "남는 것: 생성 루프 자체와 새 Query가 늘어나는 과거 Key 전부를 참조하는 비용(개념 확인 17). "
                   "주의: 같은 token prefix라도 모델 가중치·adapter·position ID·mask가 다르면 cache 재사용이 유효하지 않을 수 있다.")
-top, bot = s.area.top(3.0, gap=0.25)
-s.image(A("week6/kv_cache.png"), top)
-L, R = bot.cols(0.5, gap=0.4)
-s.bullets(["저장: 과거의 **K, V** (층마다)", "저장 안 함: **Q** (현재 토큰만 필요)", "Prefill → TTFT · Decode → 토큰당 지연"], L, size=15)
-s.bullets(["남는 것: **생성 루프** + 새 Q가 **모든 과거 K** 참조", "==주의== 가중치 · adapter · position · mask가 다르면 cache를 **공유하면 안 된다**"], R, size=15)
+L, R = s.cols(0.64)
+s.image(A("week6/kv_cache.png"), L)
+s.bullets(["저장: 과거의 **K, V** (층마다)", "저장 안 함: **Q** (현재 토큰만 필요)", "**Prefill** → 첫 토큰까지 시간 (TTFT)",
+           "**Decode** → 토큰당 지연", "남는 것: **생성 루프** + 새 Q가 **모든 과거 K** 참조",
+           "==주의== 가중치 · adapter · position · mask가 다르면 cache를 **공유하면 안 된다**"], R, size=15)
 
 s = d.slide("“Transformer는 O(N²)”만으로는 부족하다", lead="한 블록 MACs ≈ 4Nd² (투영) + 2N²d (attention) + 2N·d·d_ff (FFN)", stage="계산",
             notes="길이 N, 폭 d의 dense self-attention 블록 forward의 주요 행렬곱(MAC, 곱셈-누산 1회 ≈ 2 FLOPs). Q/K/V/O 투영 4Nd², attention의 QKᵀ와 AV 2N²d, FFN 2Nd·d_ff. "
@@ -415,11 +415,12 @@ s.cards([{"head": "작은 과제", "bullets": True, "body": ["복사: output = i
          {"head": "네 가지 그림", "bullets": True, "body": ["길이 – 정확도", "step – loss", "품질 – 지연 · 길이 – 메모리"]},
          {"head": "최종 프로젝트 배점 (제안)", "tone": "accent", "bullets": True,
           "body": ["가설 20 · **구현 정확성 30**", "실험 25 · 해석과 한계 15", "설명 발표 10"]}], cols=4, body_size=14, head_size=16)
+s.area = Box(s.area.x, s.area.y + 2.75, s.area.w, s.area.h - 2.75)
 s.callout("성공 기준: 예상과 다른 결과라도 **조건과 가능한 설명을 정확히** 정리했다면 좋은 연구 연습이다. "
           "정해 둔 결론에 맞춰 데이터나 조건을 숨기지 않는다. 측정하지 않은 값을 추정치처럼 채우지 않는다.",
-          Box(s.area.x, s.area.y + 2.35, s.area.w, 1.2), kind="key", size=16)
+          Box(s.area.x, s.area.y, s.area.w, 1.2), kind="key", size=16)
 s.callout("최종 발표의 세 질문: ① 어느 가정에서만 결론이 성립하나? ② 차이가 파라미터 수·학습량 때문일 가능성은? ③ 모델이 실패한 입력 하나를 보여 줄 수 있나?",
-          Box(s.area.x, s.area.y + 3.8, s.area.w, 1.0), kind="tip", size=15)
+          Box(s.area.x, s.area.y + 1.35, s.area.w, 1.0), kind="tip", size=15)
 
 # ============================================================ Part 7
 d.part(7, "Transformer 이후, 그리고 과정 마무리", "원형에서 무엇을 유지하고, 무엇을 바꾸었나? — 그리고 여섯 질문을 다시 본다")

@@ -114,11 +114,13 @@ s = d.slide("모델 = 조절 손잡이가 달린 함수", lead="학습이란 데
 s.takeaway("오늘의 나머지 = 이 네 질문에 하나씩 답하기")
 top, bot = s.area.top(1.1, gap=0.35)
 s.formula("ŷ = f_θ(x)      θ: 학습으로 정해지는 숫자들", top, size=24)
-s.cards([{"head": "① 데이터를 숫자로?", "body": ["**Part 2 · Tensor**", "shape · 내적 · 행렬곱"]},
+rest = s.cards([{"head": "① 데이터를 숫자로?", "body": ["**Part 2 · Tensor**", "shape · 내적 · 행렬곱"]},
          {"head": "② 얼마나 틀렸나?", "body": ["**Part 3 · 손실**", "선형 모델 · MSE"]},
          {"head": "③ 어떻게 고치나?", "body": ["**Part 4 · 경사하강법**", "기울기 · 학습률 · 학습 루프"]},
          {"head": "④ 새 데이터에도?", "body": ["**Part 5 · 일반화**", "train / val / test"], "tone": "accent"}],
-        bot, body_size=16, head_size=18, fit_h=False)
+        bot, body_size=16, head_size=18)
+s.callout("각 Part는 같은 순서로 진행한다: **문제 → 아이디어 → 계산 → 검증** (슬라이드 오른쪽 위 태그)",
+          Box(rest.x, rest.y + 0.05, rest.w, 0.8), kind="tip", size=16)
 
 # ============================================================ Part 2
 d.part(2, "Tensor: 데이터를 담는 그릇", "컴퓨터는 숫자만 계산한다 — 표·이미지·문장을 어떤 숫자로 바꿀까?",

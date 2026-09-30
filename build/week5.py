@@ -47,7 +47,7 @@ s = d.slide("요약본 하나 vs 원문 다시 보기", lead="Encoder의 위치�
             notes="왼쪽(Seq2Seq): 책을 읽고 요약문 하나만 남긴 뒤 그 요약문으로 모든 질문에 답한다. 오른쪽(Attention): 답할 때마다 남겨 둔 원문의 여러 위치를 다른 비중으로 참고한다. "
                   "원자료 주의: 이것은 계산 경로를 이해하기 위한 비유일 뿐, 모델이 사람처럼 책을 이해한다는 증거가 아니다. 실제로 실행되는 것은 정렬 점수 → softmax → 벡터 가중합. "
                   "결국 바뀐 것은 '상태의 개수'(c 하나 → h_1…h_S 전부)와 '접근 규칙'(항상 같은 c → 매번 다른 가중합)이다.")
-top, bot = s.area.top(3.1, gap=0.25)
+top, bot = s.area.top(3.75, gap=0.2)
 s.image(A("week5/bottleneck.png"), top)
 L, R = bot.cols(0.5, gap=0.4)
 s.callout("**고정 문맥 벡터**: 책을 읽고 요약문 하나만 남긴 뒤, 그 요약문으로 모든 질문에 답한다", L, kind="tip", size=15)
@@ -235,9 +235,10 @@ s.cards([{"head": "해석할 때", "bullets": True, "body": ["α가 커도 **V�
          {"head": "경계 조건", "tone": "accent", "bullets": True,
           "body": ["모든 Key가 가려진 행 → softmax **정의 안 됨** (NaN 등)", "→ 유효한 Query엔 허용된 Key를 **최소 하나**",
                    "attention dropout 뒤엔 행 합이 1이 아닐 수 있다"]}], cols=2, body_size=17, head_size=19)
+s.area = Box(s.area.x, s.area.y + 2.75, s.area.w, s.area.h - 2.75)
 s.callout("원자료 개념 확인 18: 큰 attention 가중치를 봤다면 — ‘그 위치에 큰 참조 비중이 **관찰**되었다’고 말하고, "
           "인과 해석은 **추가 검증**한다 (예: 그 위치를 가리거나 바꿔 출력 변화를 측정).",
-          Box(s.area.x, s.area.y + 2.5, s.area.w, 1.2), kind="key", size=16)
+          Box(s.area.x, s.area.y, s.area.w, 1.2), kind="key", size=16)
 
 # ============================================================ Part 4
 d.part(4, "Multi-head와 tensor shape", "한 번의 softmax는 한 가지 비교 방식 — 여러 관점으로 동시에 보려면?")
@@ -260,7 +261,7 @@ s = d.slide("d = 8, H = 2, N = 5를 따라가기", lead="(B, N, d) → 투영 �
                   "B=2, N=5, d=8, H=2, d_h=4: X (2,5,8) → Q (2,5,8) → view (2,5,2,4) → transpose (2,2,5,4). 점수 QKᵀ: (2,2,5,4)@(2,2,4,5) → (2,2,5,5). "
                   "A V → (2,2,5,4) → transpose + reshape → (2,5,8) → W_O → (2,5,8). 입력과 출력 shape이 같아서 층을 쌓을 수 있다. "
                   "개념 확인 05: Q (B,H,T,d_h), K (B,H,S,d_h)이면 QKᵀ는 (B,H,T,S) — d_h는 내적하며 사라진다.")
-top, bot = s.area.top(2.2, gap=0.25)
+top, bot = s.area.top(2.45, gap=0.2)
 s.image(A("week5/mha_shapes.png"), top)
 s.table(["단계", "연산", "shape", "의미"],
         [["입력", "X", "(2, 5, 8)", "문장 2개 · 토큰 5개 · 특징 8개"], ["투영", "X W_Q (d × d)", "(2, 5, 8)", "모든 head의 Q를 한 번에"],
@@ -419,7 +420,7 @@ d.references([["[17] Bahdanau, Cho & Bengio (2014). Neural Machine Translation b
 
 d.handoff(["출력마다 원문을 **다시 참조**하는 Attention", "모든 위치가 직접 만나는 **Self-attention**", "Q·K·V · Multi-head · 위치 인코딩"],
           ["attention만으로는 **토큰별 비선형 변환**이 없다", "깊게 쌓으면? 정답을 **훔쳐보지 않고** 학습하려면? **생성**은?"],
-          ["**참조만으로 시퀀스 모델을 만들면?**", "FFN · Residual · LayerNorm · Mask · 학습 · 생성"],
+          ["**참조만으로**", "**시퀀스 모델을 만들면?**", "FFN · Residual · LayerNorm · Mask · 학습 · 생성"],
           notes="다음 주: 오늘의 attention 블록에 FFN, residual, LayerNorm을 붙여 층을 완성하고, mask와 teacher forcing으로 Decoder를 학습시키고, 토큰을 하나씩 생성한다.")
 
 d.save(OUT)

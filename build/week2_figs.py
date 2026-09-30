@@ -65,7 +65,7 @@ def fig_perceptron():
         ax.text(2.55, ly, wl, fontsize=17, color=ACC, fontweight="bold", ha="center")
     ax.add_patch(Circle((4.6, 2.8), 0.6, color=TEAL, ec=TEAL))
     ax.text(4.6, 2.8, "Σ", ha="center", va="center", fontsize=26, color="white")
-    ax.text(4.6, 1.75, "z = w₁x₁ + w₂x₂ + b", ha="center", fontsize=13, color=GRAY)
+    ax.text(4.9, 1.45, "z = w₁x₁ + w₂x₂ + b", ha="center", fontsize=13, color=GRAY)
     ax.add_patch(FancyArrowPatch((5.2, 2.8), (6.35, 2.8), arrowstyle="-|>", mutation_scale=18, color=TEAL2, lw=2))
     ax.add_patch(FancyBboxPatch((6.4, 2.1), 1.5, 1.4, boxstyle="round,pad=0.05", fc=MINT, ec=TEAL, lw=2))
     t = np.linspace(-1, 1, 50)
@@ -303,7 +303,7 @@ def fig_graph():
     ax.text(6, 0.6, "∂L/∂W₂ = hᵀ·1 = [[1.5],[0]]      ∂L/∂W₁ = xᵀ·[2, 0] = [[2, 0],[2, 0]]", ha="center",
             fontsize=13, color=ACC)
     ax.text(0.1, 5.0, "→ forward(값)", color=TEAL2, fontsize=12.5, fontweight="bold")
-    ax.text(2.1, 5.0, "⇠ backward(gradient)", color=ACC, fontsize=12.5, fontweight="bold")
+    ax.text(3.0, 5.0, "⇠ backward(gradient)", color=ACC, fontsize=12.5, fontweight="bold")
     save(fig, "graph.png")
 
 

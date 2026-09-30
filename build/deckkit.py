@@ -142,7 +142,7 @@ def est_height(items, w_in, size, spacing=1.2, gap=0.45, sub_ratio=0.85, indent=
         sz = size if lvl == 0 else size * sub_ratio
         avail = max(0.4, w_in - indent * (lvl + 1))
         per_line = avail * 72 / sz
-        lines = max(1, math.ceil(text_units(plain(text)) / per_line))
+        lines = max(1, math.ceil(text_units(plain(text)) * 1.07 / per_line))
         h += lines * sz * spacing / 72 + gap * sz / 72
     return h + 0.1
 
@@ -414,7 +414,7 @@ class S:
                                          Inches(pw), Inches(ph))
 
     def card(self, box, head, body=None, tone="teal", body_size=15, head_size=17, bullets=None,
-             num=None, min_size=10, fit_h=False):
+             num=None, min_size=10, fit_h=False, head_fixed=False):
         """카드 하나. fit_h=True면 내용 높이로 줄이고 아래 남은 영역(Box)을 반환."""
         rest = None
         if fit_h:
@@ -434,7 +434,7 @@ class S:
             hx = inner.x + 0.55
         hh = min(0.9, max(0.42, est_height([head], inner.r - hx, head_size, gap=0) - 0.05))
         self.textbox(head, Box(hx, inner.y, inner.r - hx, hh), size=head_size, bold=True, color=headc,
-                     anchor="m", min_size=11, margin=0.02, gap=0)
+                     anchor="m", min_size=11, margin=0.02, gap=0, autofit=not head_fixed)
         if body:
             by = inner.y + hh + 0.08
             items = body
@@ -472,7 +472,7 @@ class S:
         hs = head_size
         for c in cards:
             hw = cw - 0.36 - (0.55 if (numbered or c.get("num")) else 0)
-            while hs > 11 and text_units(plain(c["head"])) * hs / 72 > hw * 2:
+            while hs > 11 and est_height([c["head"]], hw, hs, gap=0) - 0.05 > 0.9:
                 hs -= 0.5
         head_size = hs
         y = box.y
@@ -482,7 +482,7 @@ class S:
                 b = Box(box.x + k * (cw + gap), y, cw, heights[r])
                 self.card(b, c["head"], c.get("body"), tone=c.get("tone", "teal"), body_size=body_size,
                           head_size=head_size, num=(i + 1) if numbered else c.get("num"),
-                          bullets=c.get("bullets"))
+                          bullets=c.get("bullets"), head_fixed=True)
             y += heights[r] + gap
         return Box(box.x, y + 0.05, box.w, max(0.0, box.b - y - 0.05))
 
@@ -702,12 +702,12 @@ def _cell_border(cell, color=LINE):
 
 # ================================================================ deck
 COURSE = [
-    (1, "배울 수 있을까?", "Tensor · 학습", "1943–1958"),
-    (2, "직선으로 안 되면?", "Perceptron · MLP", "1958–1986"),
-    (3, "공간 · 깊이는?", "CNN · ResNet", "1989–2016"),
-    (4, "먼 정보를 기억하려면?", "RNN · LSTM · Seq2Seq", "1986–2014"),
-    (5, "원문을 다시 보면?", "Attention", "2014–2017"),
-    (6, "참조만으로 만들면?", "Transformer", "2017–"),
+    (1, "배울 수\n있을까?", "Tensor · 학습", "1943–1958"),
+    (2, "직선으로\n안 되면?", "Perceptron · MLP", "1958–1986"),
+    (3, "공간과\n깊이는?", "CNN · ResNet", "1989–2016"),
+    (4, "먼 정보를\n기억하려면?", "RNN · LSTM", "1986–2014"),
+    (5, "원문을\n다시 보면?", "Attention", "2014–2017"),
+    (6, "참조만으로\n만들면?", "Transformer", "2017–"),
 ]
 
 
@@ -758,6 +758,10 @@ class Deck:
                     t.text = self.date
                 elif (t.text or "").strip() == "AICA Lab Meeting":
                     t.text = self.event
+            if el.find(".//" + qn("p:ph")) is None:  # 발표자 텍스트 상자: 두 자리 쪽번호와 겹치지 않게 왼쪽으로
+                off = el.find(".//" + qn("a:off"))
+                if off is not None:
+                    off.set("x", str(int(off.get("x")) - int(Inches(0.3))))
             tree.append(el)
         if notes:
             s.notes_slide.notes_text_frame.text = notes
@@ -1005,3 +1009,7 @@ def mpl_setup():
 
 HEX = {k: "#" + v for k, v in dict(TEAL=TEAL, SKY=SKY, CYAN=CYAN, AQUA=AQUA, ORANGE=ORANGE, INK=INK,
                                    GRAY=GRAY, LINE=LINE, TINT=TINT, TINT2=TINT2).items()}
+
+# 그림 스크립트(v1)용 호환 팔레트 — 템플릿 색으로 매핑
+PALETTE_HEX = {"TEAL": "#" + TEAL, "TEAL2": "#2A93B5", "MINT": "#E3F0F6", "DARK": "#" + INK,
+               "GRAY": "#" + GRAY, "ACCENT": "#" + ORANGE, "LINE": "#" + LINE}

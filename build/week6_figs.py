@@ -205,7 +205,7 @@ def fig_encdec():
     # E -> cross attention
     ax.plot([3.8, 4.85, 4.85], [7.75, 7.75, 4.72], color=ACC, lw=2)
     arr(ax, 4.85, 4.72, 5.9, 4.72, c=ACC, lw=2)
-    ax.text(4.52, 6.0, "모든 Decoder 층이 같은 E 참조", fontsize=9, color=ACC, rotation=90, ha="center", va="center")
+    pass  # (회전 라벨 제거: 연결선과 겹침)
     # output head
     blk(ax, 5.9, 8.55, 3.3, 0.65, "Linear  W_vocab (d×|V|)", fc=MINT2, ec=TEAL, fs=10)
     blk(ax, 5.9, 9.55, 3.3, 0.65, "Softmax → p(y_t | y_<t, x)", fc=TEAL, ec=TEAL, tc="white", fs=10,

@@ -146,6 +146,8 @@ s.code("import torch, torch.nn as nn\n"
        "print(out.shape)   # (2, 5, 16)  모든 시점의 h\n"
        "print(h_n.shape)   # (1, 2, 16)  마지막 h\n"
        "print(sum(p.numel() for p in rnn.parameters()))  # 416", L, size=13)
+cb = s.last_code_box
+s.callout("`out[:, -1]`와 `h_n[0]`은 같은 값이다 (한 층, 단방향) — 직접 확인해 보기", Box(L.x, cb.b + 0.25, L.w, 0.8), kind="tip", size=15)
 s.bullets(["`out`: 시점마다의 h → 문맥 표현", "`h_n`: 마지막 h → 문장 **요약**", "파라미터 416 = 8·16 + 16·16 + 16 + 16",
            ("길이 N과 **무관**", 1), "nn.LSTM은 4배: 1,664"], R)
 
