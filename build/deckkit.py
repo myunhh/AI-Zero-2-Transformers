@@ -1,15 +1,23 @@
-"""deckkit — AICA Lab 템플릿(Lab-template.pptx) 위에 강의 슬라이드를 쌓는 공통 빌더.
+"""deckkit v2 — AICA Lab 템플릿(Lab-template.pptx)을 그대로 사용하는 강의 슬라이드 빌더.
 
-사용 예:
-    from deckkit import Deck
-    d = Deck(week=1, title="Tensor와 학습의 기초", subtitle="AI Zero 2 Transformer · 1주차")
-    d.section("01", "Tensor란 무엇인가", "스칼라에서 4차원 텐서까지")
-    d.bullets("벡터와 행렬", ["**벡터**는 숫자의 묶음", ("하위 항목", 1)], notes="...")
-    d.save("lectures/week01.pptx")
+템플릿 사용 원칙
+  * 표지      = 템플릿 1번 슬라이드 (Title Slide) — 행사명/제목/발표자 개체 틀만 채움
+  * 구역 표지 = 템플릿 '제목 슬라이드' 레이아웃 (AICA·SSU 로고 포함)
+  * 본문      = 템플릿 'Title and Content' 레이아웃 — 제목 개체 틀 + 본문 개체 틀(템플릿 글머리표 ▪ / -)
+                + 템플릿 2번 슬라이드의 날짜·발표자·쪽번호 푸터
+  * 마지막    = 템플릿 3번 슬라이드 (Question ?)
+  * 색        = 템플릿 헤더 그라데이션/AICA 로고에서 추출한 색만 사용
 
-인라인 마크업(모든 텍스트 공통):
-    **굵게**   ==강조색==   `코드/수식(고정폭)`
-좌표 단위는 inch. 본문 영역: x 0.5~12.83, y 1.05~6.95 (헤더/푸터는 템플릿이 그림).
+사용:
+    from deckkit import *
+    d = Deck(1, "Tensor와 학습", date="2026-10-05")
+    s = d.slide("벡터와 행렬", lead="모든 입력은 숫자 배열이 된다", stage="아이디어", notes="...")
+    L, R = s.cols(0.55)
+    s.bullets(["**벡터**는 숫자의 묶음", ("하위 항목", 1)], L)
+    s.image("assets/week1/x.png", R)
+    d.save("../lectures/week01.pptx")
+
+인라인 마크업: **굵게**  ==강조(주황)==  `고정폭`   · 좌표 단위 inch
 """
 from __future__ import annotations
 
@@ -17,106 +25,136 @@ import copy
 import math
 import os
 import re
-from typing import Iterable
 
 from pptx import Presentation
 from pptx.dml.color import RGBColor
 from pptx.enum.shapes import MSO_CONNECTOR, MSO_SHAPE
 from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
 from pptx.oxml.ns import qn
-from pptx.util import Emu, Inches, Pt
+from pptx.util import Inches, Pt
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TEMPLATE = os.path.join(HERE, "Lab-template.pptx")
 
-# ---- 팔레트: 템플릿 헤더(청록 그라데이션)와 AICA 로고색에서 추출 ----
-TEAL = "0F6C8C"      # 주색 (헤더 진한 청록)
-TEAL2 = "3FA7B8"     # 보조색 (로고 밝은 청록)
-MINT = "E6F3F6"      # 카드 배경 틴트
-MINT2 = "CFE8EE"     # 강한 틴트
-DARK = "1F2D3D"      # 본문 텍스트
-GRAY = "5B6770"      # 캡션
-LINE = "B9CBD3"      # 경계선
-ACCENT = "E07A2F"    # 강조 (주황) — 핵심 수치/경고에만
-ACCENT_BG = "FDF1E8"
+# 템플릿의 행사명 자리(표지 상단 'AICA Lab Meeting', 푸터)에 들어갈 이름
+EVENT = "AI Zero 2 Transformer"
+AUTHOR = "Yun-Hong Min"
+
+# ---- 템플릿에서 추출한 색 ----
+TEAL = "01688F"      # 헤더 그라데이션 시작색 / AICA 로고 진청록
+SKY = "72ABC8"       # 헤더 그라데이션 중간색
+CYAN = "00A3CA"      # AICA 로고 청색
+AQUA = "58C4C4"      # AICA 로고 밝은 청록
+ORANGE = "E97132"    # 템플릿 테마 accent2 — 경고·핵심 수치에만
+INK = "1B2A36"       # 본문 진한 글자
+GRAY = "5E6B75"
+LINE = "C5D9E4"
+TINT = "EDF5F9"      # SKY의 아주 옅은 틴트 (카드 배경)
+TINT2 = "D8EAF2"
+ORANGE_TINT = "FDF1E9"
+CODE_BG = "F4F7F9"
 WHITE = "FFFFFF"
-CODE_BG = "F3F6F8"
 
 FONT = "맑은 고딕"
 MONO = "Courier New"
 
+# 본문 영역
 X0, X1 = 0.5, 12.83
-Y0, Y1 = 1.05, 6.95
 W = X1 - X0
+Y_TOP = 0.92          # 헤더(0.745") 바로 아래
+Y1 = 6.98             # 푸터 위
+
+STAGES = {
+    "문제": (ORANGE, WHITE),
+    "아이디어": (CYAN, WHITE),
+    "계산": (TEAL, WHITE),
+    "검증": ("2E8F8F", WHITE),
+    "역사": (SKY, WHITE),
+    "코드": (INK, WHITE),
+    "정리": (TEAL, WHITE),
+    "도입": (SKY, WHITE),
+    "실습": (INK, WHITE),
+}
 
 
 def rgb(h):
     return RGBColor.from_string(h)
 
 
-# ---------------------------------------------------------------- text utils
+# ================================================================ text utils
 _TOKEN = re.compile(r"(\*\*.+?\*\*|==.+?==|`.+?`)")
 
 
-def parse_inline(text: str):
-    """'**a** b `c`' -> [(text, style_dict)]"""
+def parse_inline(text):
     out = []
     for part in _TOKEN.split(text):
         if not part:
             continue
-        if part.startswith("**") and part.endswith("**"):
+        if part.startswith("**") and part.endswith("**") and len(part) > 4:
             out.append((part[2:-2], {"bold": True}))
-        elif part.startswith("==") and part.endswith("=="):
-            out.append((part[2:-2], {"bold": True, "color": ACCENT}))
-        elif part.startswith("`") and part.endswith("`"):
+        elif part.startswith("==") and part.endswith("==") and len(part) > 4:
+            out.append((part[2:-2], {"bold": True, "color": ORANGE}))
+        elif part.startswith("`") and part.endswith("`") and len(part) > 2:
             out.append((part[1:-1], {"mono": True}))
         else:
             out.append((part, {}))
     return out
 
 
-def _plain(text: str) -> str:
+def plain(text):
     return re.sub(r"\*\*|==|`", "", text)
 
 
-def text_units(s: str) -> float:
-    """대략적인 글자 폭(1.0 = 전각). 한글/한자 1.0, 라틴 0.55."""
+def text_units(s):
+    """대략적인 글자 폭 (1.0 = 한글 한 글자 = 글꼴 크기)."""
     u = 0.0
     for ch in s:
         o = ord(ch)
-        if o >= 0x1100 and not (0x2000 <= o <= 0x206F):
+        if 0xAC00 <= o <= 0xD7A3 or 0x3130 <= o <= 0x318F or 0x4E00 <= o <= 0x9FFF:
             u += 1.0
         elif ch == " ":
             u += 0.3
-        elif ch in "ilj.,:;|!'`":
-            u += 0.3
+        elif ch in "ilj.,:;|!'`()[]":
+            u += 0.32
         elif ch.isupper() or ch in "mwMW@%":
             u += 0.68
+        elif o > 0x2000:
+            u += 0.8
         else:
-            u += 0.55
+            u += 0.56
     return u
 
 
-def est_height(paras, w_in, size, spacing=1.25, para_gap=0.35, indent_per_level=0.3):
-    """문단 목록의 대략적인 높이(inch)."""
+def _norm(items):
+    if isinstance(items, str):
+        items = [items]
+    return [(it if isinstance(it, tuple) else (it, 0)) for it in items]
+
+
+def est_height(items, w_in, size, spacing=1.2, gap=0.45, sub_ratio=0.85, indent=0.3):
     h = 0.0
-    for p in paras:
-        text, lvl = (p if isinstance(p, tuple) else (p, 0))
-        avail = max(0.5, w_in - 0.15 - indent_per_level * (lvl + 1 if lvl else 0.3))
-        per_line = avail * 72 / size  # 전각 글자 수
-        lines = max(1, math.ceil(text_units(_plain(text)) / per_line))
-        h += lines * size * spacing / 72 + para_gap * size / 72
-    return h + 0.12
+    for text, lvl in _norm(items):
+        sz = size if lvl == 0 else size * sub_ratio
+        avail = max(0.4, w_in - indent * (lvl + 1))
+        per_line = avail * 72 / sz
+        lines = max(1, math.ceil(text_units(plain(text)) / per_line))
+        h += lines * sz * spacing / 72 + gap * sz / 72
+    return h + 0.1
 
 
-def fit_size(paras, w_in, h_in, max_size=18, min_size=11, **kw):
-    s = max_size
-    while s > min_size and est_height(paras, w_in, s, **kw) > h_in:
+def fit(items, w, h, size, min_size, **kw):
+    s = size
+    while s > min_size and est_height(items, w, s, **kw) > h:
         s -= 0.5
+    if est_height(items, w, s, **kw) > h * 1.04:
+        WARN.append(f"텍스트 넘침 가능: {plain(str(_norm(items)[0][0]))[:30]}… ({s}pt, box {w:.1f}x{h:.1f})")
     return s
 
 
-def _set_run_font(run, size=None, bold=None, color=None, italic=None, mono=False):
+WARN: list[str] = []
+
+
+def _font(run, size=None, bold=None, color=None, mono=False, italic=False, set_face=True):
     f = run.font
     if size:
         f.size = Pt(size)
@@ -126,708 +164,819 @@ def _set_run_font(run, size=None, bold=None, color=None, italic=None, mono=False
         f.italic = True
     if color:
         f.color.rgb = rgb(color)
-    name = MONO if mono else FONT
-    f.name = name
-    rPr = run._r.get_or_add_rPr()
-    for tag in ("a:ea", "a:cs"):
-        el = rPr.find(qn(tag))
-        if el is None:
-            el = rPr.makeelement(qn(tag), {})
-            rPr.append(el)
-        el.set("typeface", FONT if tag == "a:ea" else name)
+    if set_face or mono:
+        name = MONO if mono else FONT
+        f.name = name
+        rPr = run._r.get_or_add_rPr()
+        for tag in ("a:ea", "a:cs"):
+            el = rPr.find(qn(tag))
+            if el is None:
+                el = rPr.makeelement(qn(tag), {})
+                rPr.append(el)
+            el.set("typeface", FONT if tag == "a:ea" else name)
 
 
-def _bullet(p, char="•", color=TEAL, lvl=0, size=16):
-    pPr = p._p.get_or_add_pPr()
-    indent = int(Inches(0.28 + 0.02 * (size - 14) / 4))
-    pPr.set("marL", str(int(Inches(0.05 + 0.32 * lvl)) + indent))
-    pPr.set("indent", str(-indent))
-    for tag in ("a:buNone", "a:buChar", "a:buAutoNum", "a:buClr", "a:buFont"):
+def _clear_bullets(pPr):
+    for tag in ("a:buNone", "a:buChar", "a:buAutoNum", "a:buClr", "a:buFont", "a:buSzPct"):
         for el in pPr.findall(qn(tag)):
             pPr.remove(el)
-    buClr = pPr.makeelement(qn("a:buClr"), {})
-    srgb = buClr.makeelement(qn("a:srgbClr"), {"val": color})
-    buClr.append(srgb)
-    pPr.append(buClr)
-    buFont = pPr.makeelement(qn("a:buFont"), {"typeface": "Arial"})
-    pPr.append(buFont)
-    buChar = pPr.makeelement(qn("a:buChar"), {"char": char})
-    pPr.append(buChar)
+
+
+def _bullet(p, lvl, color=TEAL):
+    """템플릿과 같은 글머리표: 1수준 ▪(Wingdings §), 2수준 -."""
+    pPr = p._p.get_or_add_pPr()
+    _clear_bullets(pPr)
+    ind = Inches(0.26)
+    pPr.set("marL", str(int(Inches(0.02 + 0.34 * lvl)) + ind))
+    pPr.set("indent", str(-ind))
+    c = pPr.makeelement(qn("a:buClr"), {})
+    c.append(c.makeelement(qn("a:srgbClr"), {"val": color}))
+    pPr.append(c)
+    if lvl == 0:
+        pPr.append(pPr.makeelement(qn("a:buFont"), {"typeface": "Wingdings", "pitchFamily": "2", "charset": "2"}))
+        pPr.append(pPr.makeelement(qn("a:buChar"), {"char": "§"}))
+    else:
+        pPr.append(pPr.makeelement(qn("a:buFont"), {"typeface": "Arial"}))
+        pPr.append(pPr.makeelement(qn("a:buChar"), {"char": "-"}))
 
 
 def _no_bullet(p):
     pPr = p._p.get_or_add_pPr()
-    for tag in ("a:buNone", "a:buChar", "a:buAutoNum"):
-        for el in pPr.findall(qn(tag)):
-            pPr.remove(el)
+    _clear_bullets(pPr)
     pPr.set("marL", "0")
     pPr.set("indent", "0")
     pPr.append(pPr.makeelement(qn("a:buNone"), {}))
 
 
-def fill_tf(tf, paras, size=16, color=DARK, bold=False, align="l", bullets=False,
-            spacing=1.15, para_gap=0.35, bullet_color=TEAL, anchor="t", margin=0.08):
-    """paras: str | (str, level) 목록. 인라인 마크업 지원."""
+def fill(tf, items, size=16, color=INK, bold=False, align="l", bullets=False, anchor="t",
+         spacing=1.1, gap=0.45, margin=0.08, sub_ratio=0.85, set_face=True, bullet_color=TEAL):
     tf.word_wrap = True
-    tf.auto_size = None
-    m = Inches(margin)
-    tf.margin_left = tf.margin_right = m
+    tf.margin_left = tf.margin_right = Inches(margin)
     tf.margin_top = tf.margin_bottom = Inches(0.04)
     tf.vertical_anchor = {"t": MSO_ANCHOR.TOP, "m": MSO_ANCHOR.MIDDLE, "b": MSO_ANCHOR.BOTTOM}[anchor]
-    if isinstance(paras, str):
-        paras = [paras]
+    # 기존 문단 제거
+    txBody = tf._txBody
+    ps = txBody.findall(qn("a:p"))
+    for p in ps[1:]:
+        txBody.remove(p)
+    p0 = tf.paragraphs[0]
+    for r in list(p0._p):
+        if r.tag in (qn("a:r"), qn("a:br"), qn("a:fld")):
+            p0._p.remove(r)
     first = True
-    for item in paras:
-        text, lvl = (item if isinstance(item, tuple) else (item, 0))
+    for text, lvl in _norm(items):
         p = tf.paragraphs[0] if first else tf.add_paragraph()
         first = False
         p.alignment = {"l": PP_ALIGN.LEFT, "c": PP_ALIGN.CENTER, "r": PP_ALIGN.RIGHT}[align]
         p.line_spacing = spacing
-        p.space_after = Pt(size * para_gap)
-        psize = size if lvl == 0 else max(10, size - 2)
+        sz = size if lvl == 0 else round(size * sub_ratio * 2) / 2
+        p.space_before = Pt(0)
+        p.space_after = Pt(sz * gap)
         if bullets:
-            _bullet(p, char="•" if lvl == 0 else "–", color=bullet_color, lvl=lvl, size=psize)
+            _bullet(p, lvl, bullet_color)
         else:
             _no_bullet(p)
         for seg, st in parse_inline(text):
             r = p.add_run()
             r.text = seg
-            _set_run_font(r, size=psize, bold=st.get("bold", bold),
-                          color=st.get("color", color if lvl == 0 else (color if color != DARK else "37474F")),
-                          mono=st.get("mono", False))
+            _font(r, size=sz, bold=st.get("bold", bold), color=st.get("color", color),
+                  mono=st.get("mono", False), set_face=set_face)
     return tf
 
 
-# ---------------------------------------------------------------- deck
-class Deck:
-    def __init__(self, week: int, title: str, subtitle: str = "",
-                 date: str = "2026-10-05", course: str = "AI Zero 2 Transformer",
-                 author: str = "Yun-Hong Min", email: str = "picomin1027@gmail.com"):
-        self.prs = Presentation(TEMPLATE)
-        self.week = week
-        self.date = date
-        s_title, s_proto, s_last = list(self.prs.slides)
-        self._proto = s_proto
-        self._last = s_last
-        self.layout = s_proto.slide_layout
-        # 표지
-        for sh in s_title.placeholders:
-            idx = sh.placeholder_format.idx
-            if idx == 10:
-                self._set_ph(sh, course, keep_style=True)
-            elif idx == 0:
-                self._set_ph(sh, f"Week {week}. {title}", keep_style=True)
-                if text_units(title) > 22:
-                    for r in sh.text_frame.paragraphs[0].runs:
-                        r.font.size = Pt(max(20, int(32 * 26 / (text_units(title) + 4))))
-            elif idx == 1:
-                lines = ([subtitle] if subtitle else []) + [f"{author} ({email})"]
-                self._set_ph_lines(sh, lines)
-                ps = sh.text_frame.paragraphs
-                for k, p in enumerate(ps):
-                    for r in p.runs:
-                        r.font.size = Pt(18 if (subtitle and k == 0) else 15)
-                        if subtitle and k == 0:
-                            r.font.bold = False
-        # 마지막 장
-        for sh in s_last.placeholders:
-            if sh.placeholder_format.idx == 10:
-                self._set_ph(sh, f"E-mail: {email}", keep_style=True)
-        self._footer_xml = [copy.deepcopy(sp._element) for sp in s_proto.shapes
-                            if not (sp.is_placeholder and sp.placeholder_format.idx in (0, 1))]
-        self.n = 0
+# ================================================================ geometry
+class Box:
+    def __init__(self, x, y, w, h):
+        self.x, self.y, self.w, self.h = x, y, w, h
 
-    # -- placeholder text keeping first-run formatting
-    @staticmethod
-    def _set_ph(sh, text, keep_style=True):
-        tf = sh.text_frame
-        p0 = tf.paragraphs[0]
-        runs = p0.runs
-        if runs:
-            runs[0].text = text
-            for r in runs[1:]:
-                r._r.getparent().remove(r._r)
-        else:
-            p0.add_run().text = text
-        for p in tf.paragraphs[1:]:
-            p._p.getparent().remove(p._p)
+    @property
+    def r(self):
+        return self.x + self.w
 
-    @staticmethod
-    def _set_ph_lines(sh, lines):
-        tf = sh.text_frame
-        base = tf.paragraphs[0]
-        tmpl_p = copy.deepcopy(base._p)
-        for p in list(tf.paragraphs):
-            p._p.getparent().remove(p._p)
-        txBody = tf._txBody
-        for ln in lines:
-            p = copy.deepcopy(tmpl_p)
-            rs = p.findall(qn("a:r"))
-            for r in rs[1:]:
-                p.remove(r)
-            rs[0].find(qn("a:t")).text = ln
-            txBody.append(p)
+    @property
+    def b(self):
+        return self.y + self.h
 
-    # -- new content slide with template header/footer
-    def new_slide(self, title: str, notes: str | None = None):
-        s = self.prs.slides.add_slide(self.layout)
-        for ph in list(s.placeholders):
-            idx = ph.placeholder_format.idx
-            if idx == 0:
-                ph.text_frame.text = ""
-                r = ph.text_frame.paragraphs[0].add_run()
-                r.text = title
-                n = text_units(title)
-                if n > 34:
-                    r.font.size = Pt(max(18, int(28 * 34 / n)))
-            else:
-                ph._element.getparent().remove(ph._element)
-        tree = s.shapes._spTree
-        for el in self._footer_xml:
-            el = copy.deepcopy(el)
-            off = el.find(".//" + qn("a:off"))
-            if off is not None and el.find(".//" + qn("p:ph")) is None:
-                off.set("x", str(int(off.get("x")) - int(Inches(0.15))))
-            for t in el.iter(qn("a:t")):
-                if re.fullmatch(r"\d{4}-\d{2}-\d{2}", t.text or ""):
-                    t.text = self.date
-            tree.append(el)
-        if notes:
-            s.notes_slide.notes_text_frame.text = notes
-        self.n += 1
-        return s
+    def inset(self, dx=0.15, dy=None):
+        dy = dx if dy is None else dy
+        return Box(self.x + dx, self.y + dy, self.w - 2 * dx, self.h - 2 * dy)
 
-    # ------------------------------------------------------------ primitives
-    def box(self, s, x, y, w, h, fill=MINT, line=None, shape=MSO_SHAPE.ROUNDED_RECTANGLE,
-            radius=0.08, shadow=False):
-        shp = s.shapes.add_shape(shape, Inches(x), Inches(y), Inches(w), Inches(h))
-        if fill:
+    def cols(self, *ratios, gap=0.3):
+        if len(ratios) == 1:
+            ratios = (ratios[0], 1 - ratios[0])
+        tot = sum(ratios)
+        avail = self.w - gap * (len(ratios) - 1)
+        out, x = [], self.x
+        for r in ratios:
+            w = avail * r / tot
+            out.append(Box(x, self.y, w, self.h))
+            x += w + gap
+        return out
+
+    def rows(self, *ratios, gap=0.25):
+        if len(ratios) == 1:
+            ratios = (ratios[0], 1 - ratios[0])
+        tot = sum(ratios)
+        avail = self.h - gap * (len(ratios) - 1)
+        out, y = [], self.y
+        for r in ratios:
+            h = avail * r / tot
+            out.append(Box(self.x, y, self.w, h))
+            y += h + gap
+        return out
+
+    def top(self, h, gap=0.25):
+        return Box(self.x, self.y, self.w, h), Box(self.x, self.y + h + gap, self.w, self.h - h - gap)
+
+    def bottom(self, h, gap=0.25):
+        return Box(self.x, self.y, self.w, self.h - h - gap), Box(self.x, self.b - h, self.w, h)
+
+    def grid(self, n, cols, gap=0.25, row_gap=None):
+        row_gap = gap if row_gap is None else row_gap
+        rows = math.ceil(n / cols)
+        cw = (self.w - gap * (cols - 1)) / cols
+        ch = (self.h - row_gap * (rows - 1)) / rows
+        return [Box(self.x + (i % cols) * (cw + gap), self.y + (i // cols) * (ch + row_gap), cw, ch)
+                for i in range(n)]
+
+
+# ================================================================ slide context
+class S:
+    """본문 슬라이드 하나. 템플릿 본문 개체 틀(body)을 bullets()에서 사용한다."""
+
+    def __init__(self, deck, slide, has_lead):
+        self.d = deck
+        self.s = slide
+        self.body_ph = None
+        for ph in slide.placeholders:
+            if ph.placeholder_format.idx == 1:
+                self.body_ph = ph
+        self.area = Box(X0, (Y_TOP + 0.62) if has_lead else (Y_TOP + 0.18), W,
+                        Y1 - ((Y_TOP + 0.62) if has_lead else (Y_TOP + 0.18)))
+        self._used_body = False
+
+    # -- layout helpers
+    def cols(self, *ratios, gap=0.35):
+        return self.area.cols(*ratios, gap=gap)
+
+    def rows(self, *ratios, gap=0.25):
+        return self.area.rows(*ratios, gap=gap)
+
+    # -- template body placeholder bullets
+    def bullets(self, items, box=None, size=18, min_size=12, gap=0.5, anchor="t", color=INK):
+        box = box or self.area
+        if self._used_body or self.body_ph is None:
+            return self.textbox(items, box, size=size, min_size=min_size, bullets=True, gap=gap,
+                                anchor=anchor, color=color)
+        ph = self.body_ph
+        ph.left, ph.top, ph.width, ph.height = Inches(box.x), Inches(box.y), Inches(box.w), Inches(box.h)
+        sz = fit(items, box.w - 0.2, box.h - 0.1, size, min_size, gap=gap)
+        fill(ph.text_frame, items, size=sz, bullets=True, gap=gap, anchor=anchor, color=color,
+             set_face=False)
+        bp = ph.text_frame._txBody.find(qn("a:bodyPr"))
+        for el in list(bp):
+            bp.remove(el)
+        bp.append(bp.makeelement(qn("a:normAutofit"), {}))
+        self._used_body = True
+        return ph
+
+    # -- free text
+    def textbox(self, items, box, size=16, min_size=10, color=INK, bold=False, align="l",
+                bullets=False, anchor="t", gap=0.4, spacing=1.1, margin=0.08, autofit=True):
+        if autofit:
+            size = fit(items, box.w - 2 * margin - (0.3 if bullets else 0), box.h - 0.08, size,
+                       min_size, gap=gap, spacing=spacing + 0.1)
+        tb = self.s.shapes.add_textbox(Inches(box.x), Inches(box.y), Inches(box.w), Inches(box.h))
+        fill(tb.text_frame, items, size=size, color=color, bold=bold, align=align, bullets=bullets,
+             anchor=anchor, gap=gap, spacing=spacing, margin=margin)
+        return tb
+
+    def rect(self, box, fill_color=TINT, line=None, radius=0.1, shape=MSO_SHAPE.ROUNDED_RECTANGLE,
+             line_w=1.0, dash=False):
+        shp = self.s.shapes.add_shape(shape, Inches(box.x), Inches(box.y), Inches(box.w), Inches(box.h))
+        if fill_color:
             shp.fill.solid()
-            shp.fill.fore_color.rgb = rgb(fill)
+            shp.fill.fore_color.rgb = rgb(fill_color)
         else:
             shp.fill.background()
         if line:
             shp.line.color.rgb = rgb(line)
-            shp.line.width = Pt(1)
+            shp.line.width = Pt(line_w)
+            if dash:
+                shp.line.dash_style = 4
         else:
             shp.line.fill.background()
         if shape == MSO_SHAPE.ROUNDED_RECTANGLE:
             try:
-                shp.adjustments[0] = min(0.5, radius / max(0.01, min(w, h)))
+                shp.adjustments[0] = min(0.5, radius / max(0.01, min(box.w, box.h)))
             except Exception:
                 pass
-        if not shadow:
-            spPr = shp._element.spPr
-            spPr.append(spPr.makeelement(qn("a:effectLst"), {}))
-        shp.text_frame.text = ""
+        spPr = shp._element.spPr
+        spPr.append(spPr.makeelement(qn("a:effectLst"), {}))
         return shp
 
-    def text(self, s, x, y, w, h, paras, size=16, color=DARK, bold=False, align="l",
-             bullets=False, anchor="t", autofit=True, min_size=10, spacing=1.15, para_gap=0.35,
-             margin=0.08, bullet_color=TEAL):
-        if autofit:
-            plist = [paras] if isinstance(paras, str) else paras
-            size = fit_size(plist, w - 2 * margin, h, max_size=size, min_size=min_size,
-                            spacing=spacing + 0.1, para_gap=para_gap)
-        tb = s.shapes.add_textbox(Inches(x), Inches(y), Inches(w), Inches(h))
-        fill_tf(tb.text_frame, paras, size=size, color=color, bold=bold, align=align,
-                bullets=bullets, anchor=anchor, spacing=spacing, para_gap=para_gap,
-                margin=margin, bullet_color=bullet_color)
-        return tb
-
-    def text_in(self, shp, paras, size=14, color=DARK, bold=False, align="l", bullets=False,
-                anchor="m", min_size=9, margin=0.12, spacing=1.1, para_gap=0.25):
-        w = shp.width / 914400
-        h = shp.height / 914400
-        plist = [paras] if isinstance(paras, str) else paras
-        size = fit_size(plist, w - 2 * margin, h - 0.1, max_size=size, min_size=min_size,
-                        spacing=spacing + 0.1, para_gap=para_gap)
-        fill_tf(shp.text_frame, paras, size=size, color=color, bold=bold, align=align,
-                bullets=bullets, anchor=anchor, margin=margin, spacing=spacing, para_gap=para_gap)
+    def label(self, shp, items, size=14, color=INK, bold=False, align="c", anchor="m", min_size=9,
+              margin=0.1, gap=0.2):
+        w = shp.width / 914400 - 2 * margin
+        h = shp.height / 914400 - 0.08
+        size = fit(items, w, h, size, min_size, gap=gap, spacing=1.2)
+        fill(shp.text_frame, items, size=size, color=color, bold=bold, align=align, anchor=anchor,
+             margin=margin, gap=gap)
         return shp
 
-    def arrow(self, s, x1, y1, x2, y2, color=TEAL2, width=2.0):
-        c = s.shapes.add_connector(MSO_CONNECTOR.STRAIGHT, Inches(x1), Inches(y1), Inches(x2), Inches(y2))
+    def arrow(self, x1, y1, x2, y2, color=SKY, width=2.0):
+        c = self.s.shapes.add_connector(MSO_CONNECTOR.STRAIGHT, Inches(x1), Inches(y1), Inches(x2), Inches(y2))
         c.line.color.rgb = rgb(color)
         c.line.width = Pt(width)
         ln = c.line._get_or_add_ln()
         ln.append(ln.makeelement(qn("a:tailEnd"), {"type": "triangle", "w": "med", "len": "med"}))
         return c
 
-    def circle_num(self, s, x, y, d, label, fill=TEAL, color=WHITE, size=14):
-        c = self.box(s, x, y, d, d, fill=fill, shape=MSO_SHAPE.OVAL)
-        self.text_in(c, str(label), size=size, color=color, bold=True, align="c", margin=0.0)
+    def badge(self, x, y, d, text, fill_color=TEAL, color=WHITE, size=13):
+        c = self.rect(Box(x, y, d, d), fill_color=fill_color, shape=MSO_SHAPE.OVAL)
+        self.label(c, str(text), size=size, color=color, bold=True, margin=0.0)
         return c
 
-    def lead(self, s, text, y=Y0, h=0.55, size=17):
-        """제목 아래 한 줄 요지(굵은 청록)."""
-        return self.text(s, X0, y, W, h, text, size=size, color=TEAL, bold=True, anchor="m", min_size=12)
-
-    # ------------------------------------------------------------ slide types
-    def section(self, num: str, title: str, subtitle: str = "", notes: str | None = None,
-                header: str | None = None):
-        """구역 표지: 큰 번호 + 제목."""
-        s = self.new_slide(header or f"Week {self.week} · Part {num}", notes)
-        self.box(s, 0.9, 2.0, 11.5, 3.3, fill=MINT)
-        self.text(s, 1.3, 2.25, 2.4, 2.8, num, size=80, color=TEAL, bold=True, anchor="m",
-                  autofit=False)
-        self.text(s, 3.8, 2.35, 8.3, 1.4, title, size=36, color=DARK, bold=True, anchor="b", min_size=24)
-        if subtitle:
-            self.text(s, 3.8, 3.85, 8.3, 1.2, subtitle, size=18, color=GRAY, anchor="t", min_size=12)
-        return s
-
-    def bullets(self, title: str, items, notes: str | None = None, lead: str | None = None,
-                side: dict | None = None, size=18):
-        """글머리표. side={'head':..,'body':[..]} 또는 {'image': path, 'caption':..} 이면 오른쪽 패널."""
-        s = self.new_slide(title, notes)
-        y = Y0
-        if lead:
-            self.lead(s, lead)
-            y += 0.7
-        w = W if not side else 6.9
-        self.text(s, X0, y + 0.1, w, Y1 - y - 0.1, items, size=size, bullets=True, min_size=11,
-                  para_gap=0.55)
-        if side:
-            self._side_panel(s, X0 + 7.2, y + 0.1, W - 7.2, Y1 - y - 0.15, side)
-        return s
-
-    def _side_panel(self, s, x, y, w, h, side):
-        if "image" in side:
-            cap_h = 0.45 if side.get("caption") else 0
-            self._image_fit(s, side["image"], x, y, w, h - cap_h)
-            if cap_h:
-                self.text(s, x, y + h - cap_h, w, cap_h, side["caption"], size=12, color=GRAY,
-                          align="c", anchor="m")
-            return
-        fill = ACCENT_BG if side.get("accent") else MINT
-        hc = ACCENT if side.get("accent") else TEAL
-        self.box(s, x, y, w, h, fill=fill)
-        yy = y + 0.2
-        if side.get("head"):
-            self.text(s, x + 0.2, yy, w - 0.4, 0.55, side["head"], size=18, bold=True, color=hc, anchor="m")
-            yy += 0.65
-        body = side.get("body", [])
-        self.text(s, x + 0.2, yy, w - 0.4, y + h - yy - 0.15, body, size=15,
-                  bullets=side.get("bullets", True), min_size=10, para_gap=0.45)
-
-    def _image_fit(self, s, path, x, y, w, h):
+    # -- composites
+    def image(self, path, box, align="c"):
         from PIL import Image
         with Image.open(path) as im:
             iw, ih = im.size
-        r = min(w / iw, h / ih)
+        r = min(box.w / iw, box.h / ih)
         pw, ph = iw * r, ih * r
-        return s.shapes.add_picture(path, Inches(x + (w - pw) / 2), Inches(y + (h - ph) / 2),
-                                    Inches(pw), Inches(ph))
+        x = box.x + {"c": (box.w - pw) / 2, "l": 0, "r": box.w - pw}[align]
+        return self.s.shapes.add_picture(path, Inches(x), Inches(box.y + (box.h - ph) / 2),
+                                         Inches(pw), Inches(ph))
 
-    def cards(self, title: str, cards: list[dict], cols: int | None = None, notes=None,
-              lead: str | None = None, numbered=False, footer: str | None = None):
-        """cards: [{'head':..., 'body': str|[..], 'tag': 'optional small label', 'accent':bool}]"""
-        s = self.new_slide(title, notes)
-        y = Y0
-        if lead:
-            self.lead(s, lead)
-            y += 0.7
-        bottom = Y1 - (0.75 if footer else 0)
+    def card(self, box, head, body=None, tone="teal", body_size=15, head_size=17, bullets=None,
+             num=None, min_size=10, fit_h=False):
+        """카드 하나. fit_h=True면 내용 높이로 줄이고 아래 남은 영역(Box)을 반환."""
+        rest = None
+        if fit_h:
+            need = self.card_need(box.w, head, body, body_size, head_size, num is not None)
+            if need < box.h:
+                rest = Box(box.x, box.y + need + 0.25, box.w, box.h - need - 0.25)
+                box = Box(box.x, box.y, box.w, need)
+        fillc, headc, line = {"teal": (TINT, TEAL, None), "accent": (ORANGE_TINT, ORANGE, None),
+                              "plain": (WHITE, TEAL, LINE), "dark": (TEAL, WHITE, None)}[tone]
+        self.rect(box, fill_color=fillc, line=line)
+        bodyc = WHITE if tone == "dark" else INK
+        inner = box.inset(0.18, 0.14)
+        hx = inner.x
+        if num is not None:
+            self.badge(inner.x, inner.y + 0.02, 0.42, num, fill_color=headc if tone != "dark" else WHITE,
+                       color=WHITE if tone != "dark" else TEAL, size=12)
+            hx = inner.x + 0.55
+        hh = min(0.9, max(0.42, est_height([head], inner.r - hx, head_size, gap=0) - 0.05))
+        self.textbox(head, Box(hx, inner.y, inner.r - hx, hh), size=head_size, bold=True, color=headc,
+                     anchor="m", min_size=11, margin=0.02, gap=0)
+        if body:
+            by = inner.y + hh + 0.08
+            items = body
+            if bullets is None:
+                bullets = isinstance(body, list) and len(body) > 1
+            self.textbox(items, Box(inner.x, by, inner.w, inner.b - by), size=body_size,
+                         bullets=bullets, color=bodyc, min_size=min_size, margin=0.02, gap=0.35)
+        return rest
+
+    def card_need(self, w, head, body, body_size=15, head_size=17, num=False):
+        iw = w - 0.36
+        hw = iw - (0.55 if num else 0)
+        hh = min(0.9, max(0.42, est_height([head], hw, head_size, gap=0) - 0.05))
+        bh = 0
+        if body:
+            bl = isinstance(body, list) and len(body) > 1
+            bh = est_height(body, iw - (0.3 if bl else 0) - 0.04, body_size, gap=0.35, spacing=1.2) + 0.08
+        return 0.28 + hh + bh + 0.1
+
+    def cards(self, cards, box=None, cols=None, numbered=False, body_size=15, head_size=17, gap=0.25,
+              fit_h=True, min_h=1.2):
+        """카드 격자. fit_h=True면 내용 높이에 맞춰 줄이고, 남은 영역(Box)을 반환."""
+        box = box or self.area
         n = len(cards)
-        cols = cols or (n if n <= 4 else (3 if n in (5, 6, 9) else 4))
+        cols = cols or (n if n <= 4 else 3)
         rows = math.ceil(n / cols)
-        gap = 0.3
-        cw = (W - gap * (cols - 1)) / cols
-        ch = (bottom - y - 0.1 - gap * (rows - 1)) / rows
-        for i, c in enumerate(cards):
-            r, k = divmod(i, cols)
-            cx = X0 + k * (cw + gap)
-            cy = y + 0.1 + r * (ch + gap)
-            acc = c.get("accent")
-            self.box(s, cx, cy, cw, ch, fill=ACCENT_BG if acc else MINT)
-            hx = cx + 0.2
-            if numbered:
-                self.circle_num(s, cx + 0.2, cy + 0.2, 0.5, i + 1, fill=ACCENT if acc else TEAL)
-                hx = cx + 0.85
-            yy = cy + 0.15
-            if c.get("tag"):
-                self.text(s, hx, yy, cx + cw - hx - 0.15, 0.35, c["tag"], size=12,
-                          color=ACCENT if acc else TEAL2, bold=True, anchor="m")
-                yy += 0.35
-            self.text(s, hx, yy, cx + cw - hx - 0.15, 0.62, c["head"], size=19, bold=True,
-                      color=ACCENT if acc else TEAL, anchor="m", min_size=13)
-            yy = max(yy + 0.7, cy + 0.85 if numbered else 0)
-            body = c.get("body", [])
-            self.text(s, cx + 0.2, yy, cw - 0.35, cy + ch - yy - 0.12, body, size=15,
-                      bullets=isinstance(body, list) and len(body) > 1, min_size=10, para_gap=0.4)
-        if footer:
-            self.takeaway(s, footer)
-        return s
+        cw = (box.w - gap * (cols - 1)) / cols
+        full_h = (box.h - gap * (rows - 1)) / rows
+        heights = []
+        for r in range(rows):
+            need = max(self.card_need(cw, c["head"], c.get("body"), body_size, head_size, numbered or c.get("num"))
+                       for c in cards[r * cols:(r + 1) * cols])
+            heights.append(min(full_h, max(min_h, need)) if fit_h else full_h)
+        # 같은 격자 안에서는 제목 글자 크기를 통일
+        hs = head_size
+        for c in cards:
+            hw = cw - 0.36 - (0.55 if (numbered or c.get("num")) else 0)
+            while hs > 11 and text_units(plain(c["head"])) * hs / 72 > hw * 2:
+                hs -= 0.5
+        head_size = hs
+        y = box.y
+        for r in range(rows):
+            for k, c in enumerate(cards[r * cols:(r + 1) * cols]):
+                i = r * cols + k
+                b = Box(box.x + k * (cw + gap), y, cw, heights[r])
+                self.card(b, c["head"], c.get("body"), tone=c.get("tone", "teal"), body_size=body_size,
+                          head_size=head_size, num=(i + 1) if numbered else c.get("num"),
+                          bullets=c.get("bullets"))
+            y += heights[r] + gap
+        return Box(box.x, y + 0.05, box.w, max(0.0, box.b - y - 0.05))
 
-    def takeaway(self, s, text, y=Y1 - 0.62, h=0.6):
-        b = self.box(s, X0, y, W, h, fill=TEAL)
-        self.text_in(b, text, size=16, color=WHITE, bold=True, align="c", margin=0.2)
-        return b
-
-    def timeline(self, title: str, events: list[tuple], notes=None, lead: str | None = None,
-                 highlight: Iterable[int] = ()):
-        """events: [(year, head, body)] — 가로 타임라인(최대 7개 권장)."""
-        s = self.new_slide(title, notes)
-        y = Y0
-        if lead:
-            self.lead(s, lead)
-            y += 0.7
-        n = len(events)
-        line_y = y + 1.05
-        self.box(s, X0, line_y - 0.03, W, 0.06, fill=LINE, shape=MSO_SHAPE.RECTANGLE)
-        gap = 0.18
-        cw = (W - gap * (n - 1)) / n
-        hl = set(highlight)
-        for i, (yr, head, body) in enumerate(events):
-            cx = X0 + i * (cw + gap)
-            acc = i in hl
-            col = ACCENT if acc else TEAL
-            self.text(s, cx, y, cw, 0.6, str(yr), size=22, bold=True, color=col, align="c",
-                      anchor="b", min_size=12)
-            d = 0.26
-            self.box(s, cx + cw / 2 - d / 2, line_y - d / 2, d, d, fill=col, shape=MSO_SHAPE.OVAL)
-            by = line_y + 0.35
-            self.box(s, cx, by, cw, Y1 - by, fill=ACCENT_BG if acc else MINT)
-            self.text(s, cx + 0.1, by + 0.1, cw - 0.2, 0.9, head, size=16, bold=True, color=col,
-                      align="c", anchor="m", min_size=11)
-            self.text(s, cx + 0.1, by + 1.05, cw - 0.2, Y1 - by - 1.15, body, size=13,
-                      color=DARK, min_size=9, para_gap=0.3)
-        return s
-
-    def flow(self, title: str, steps: list[dict | str], notes=None, lead: str | None = None,
-             caption: str | None = None, below: list | None = None):
-        """가로 흐름도: steps=[{'head':..,'body':..}] 사이에 화살표. below: 아래 글머리표."""
-        s = self.new_slide(title, notes)
-        y = Y0
-        if lead:
-            self.lead(s, lead)
-            y += 0.75
+    def flow(self, steps, box, body_size=13, head_size=16, gap=0.42, vertical=False):
+        """steps: [{'head','body','tone'}] 사이를 화살표로 연결."""
         n = len(steps)
-        ag = 0.45
-        bw = (W - ag * (n - 1)) / n
-        bh = 2.0 if below else (Y1 - y - (0.7 if caption else 0.2))
-        bh = min(bh, 3.2)
+        if vertical:
+            bh = (box.h - gap * (n - 1)) / n
+            for i, st in enumerate(steps):
+                b = Box(box.x, box.y + i * (bh + gap), box.w, bh)
+                self._flow_box(b, st, body_size, head_size)
+                if i < n - 1:
+                    self.arrow(b.x + b.w / 2, b.b + 0.04, b.x + b.w / 2, b.b + gap - 0.04)
+            return
+        bw = (box.w - gap * (n - 1)) / n
         for i, st in enumerate(steps):
-            st = st if isinstance(st, dict) else {"head": st}
-            bx = X0 + i * (bw + ag)
-            acc = st.get("accent")
-            b = self.box(s, bx, y + 0.1, bw, bh, fill=ACCENT_BG if acc else MINT,
-                         line=ACCENT if acc else None)
-            self.text(s, bx + 0.1, y + 0.2, bw - 0.2, 0.7, st["head"], size=17, bold=True,
-                      color=ACCENT if acc else TEAL, align="c", anchor="m", min_size=11)
-            if st.get("body"):
-                self.text(s, bx + 0.1, y + 0.9, bw - 0.2, bh - 0.9, st["body"], size=13,
-                          align="c", min_size=9, para_gap=0.25)
+            b = Box(box.x + i * (bw + gap), box.y, bw, box.h)
+            self._flow_box(b, st, body_size, head_size)
             if i < n - 1:
-                ax = bx + bw + 0.05
-                self.arrow(s, ax, y + 0.1 + bh / 2, ax + ag - 0.1, y + 0.1 + bh / 2)
-        yy = y + 0.1 + bh + 0.3
-        if below:
-            self.text(s, X0, yy, W, Y1 - yy - (0.7 if caption else 0), below, size=16, bullets=True,
-                      min_size=11, para_gap=0.45)
-        if caption:
-            self.takeaway(s, caption)
-        return s
+                self.arrow(b.r + 0.05, b.y + b.h / 2, b.r + gap - 0.05, b.y + b.h / 2)
 
-    def formula(self, title: str, formula: str | list, parts: list[tuple] | None = None,
-                notes=None, lead: str | None = None, takeaway: str | None = None,
-                example: list | str | None = None):
-        """핵심 수식 강조. formula: 고정폭 수식 한두 줄. parts: [(기호, 의미)]. example: 오른쪽/아래 수치 예."""
-        s = self.new_slide(title, notes)
-        y = Y0
-        if lead:
-            self.lead(s, lead)
-            y += 0.7
-        lines = formula if isinstance(formula, list) else [formula]
-        fh = 0.35 + 0.62 * len(lines)
-        b = self.box(s, X0, y + 0.1, W, fh, fill=CODE_BG, line=LINE)
-        tb = s.shapes.add_textbox(Inches(X0 + 0.2), Inches(y + 0.15), Inches(W - 0.4), Inches(fh - 0.1))
+    def _flow_box(self, b, st, body_size, head_size):
+        st = st if isinstance(st, dict) else {"head": st}
+        tone = st.get("tone", "teal")
+        fillc, headc, line = {"teal": (TINT, TEAL, None), "accent": (ORANGE_TINT, ORANGE, ORANGE),
+                              "plain": (WHITE, TEAL, LINE), "dark": (TEAL, WHITE, None)}[tone]
+        self.rect(b, fill_color=fillc, line=line)
+        inner = b.inset(0.1, 0.1)
+        if st.get("body"):
+            hh = min(0.8, max(0.4, est_height([st["head"]], inner.w, head_size, gap=0)))
+            self.textbox(st["head"], Box(inner.x, inner.y, inner.w, hh), size=head_size, bold=True,
+                         color=headc, align="c", anchor="m", min_size=10, margin=0.02, gap=0)
+            self.textbox(st["body"], Box(inner.x, inner.y + hh + 0.05, inner.w, inner.h - hh - 0.05),
+                         size=body_size, align="c", min_size=9, margin=0.02, gap=0.25,
+                         color=WHITE if tone == "dark" else INK, anchor="m" if b.h > 2.4 else "t")
+        else:
+            self.textbox(st["head"], inner, size=head_size, bold=True, color=headc, align="c",
+                         anchor="m", min_size=10, margin=0.02, gap=0)
+
+    def formula(self, lines, box, size=24, min_size=13, fill_color=CODE_BG):
+        lines = [lines] if isinstance(lines, str) else lines
+        self.rect(box, fill_color=fill_color, line=LINE)
+        def mono_units(t):
+            return sum(1.0 if (0xAC00 <= ord(c) <= 0xD7A3) else 0.61 for c in plain(t))
+        longest = max(mono_units(l) for l in lines)
+        s = size
+        while s > min_size and (longest * s / 72 > box.w - 0.45 or len(lines) * s * 1.35 / 72 > box.h - 0.1):
+            s -= 0.5
+        tb = self.s.shapes.add_textbox(Inches(box.x + 0.15), Inches(box.y), Inches(box.w - 0.3), Inches(box.h))
         tf = tb.text_frame
         tf.word_wrap = True
         tf.vertical_anchor = MSO_ANCHOR.MIDDLE
-        longest = max(len(l) for l in lines)
-        fsize = 26 if longest <= 48 else max(14, int(26 * 48 / longest))
         for i, ln in enumerate(lines):
             p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
             p.alignment = PP_ALIGN.CENTER
             _no_bullet(p)
-            r = p.add_run()
-            r.text = ln
-            _set_run_font(r, size=fsize, bold=True, color=DARK, mono=True)
-        yy = y + 0.1 + fh + 0.3
-        bottom = Y1 - (0.72 if takeaway else 0)
-        if parts and example:
-            lw = 6.9
-        else:
-            lw = W
-        if parts:
-            rows = len(parts)
-            rh = min(0.62, (bottom - yy) / max(rows, 1))
-            for i, (sym, mean) in enumerate(parts):
-                ry = yy + i * rh
-                self.box(s, X0, ry + 0.04, 1.9, rh - 0.08, fill=MINT2)
-                self.text(s, X0, ry + 0.04, 1.9, rh - 0.08, f"`{sym}`" if "`" not in sym else sym,
-                          size=15, bold=True, align="c", anchor="m", min_size=10)
-                self.text(s, X0 + 2.0, ry, lw - 2.0, rh, mean, size=15, anchor="m", min_size=10)
-        if example:
-            ex_x = X0 + (lw + 0.3 if parts else 0)
-            ex_w = W - (lw + 0.3 if parts else 0)
-            self.box(s, ex_x, yy, ex_w, bottom - yy - 0.1, fill=ACCENT_BG)
-            self.text(s, ex_x + 0.2, yy + 0.1, ex_w - 0.4, 0.45, "숫자로 확인", size=15, bold=True,
-                      color=ACCENT, anchor="m")
-            self.text(s, ex_x + 0.2, yy + 0.6, ex_w - 0.4, bottom - yy - 0.8, example, size=14,
-                      min_size=9, para_gap=0.3)
-        if takeaway:
-            self.takeaway(s, takeaway)
-        return s
+            for seg, st in parse_inline(ln):
+                r = p.add_run()
+                r.text = seg
+                _font(r, size=s, bold=True, color=st.get("color", INK), mono=True)
+        return tb
 
-    def table(self, title: str, header: list[str], rows: list[list[str]], notes=None,
-              lead: str | None = None, col_widths: list[float] | None = None, takeaway=None,
-              size=14, highlight_rows: Iterable[int] = ()):
-        s = self.new_slide(title, notes)
-        y = Y0
-        if lead:
-            self.lead(s, lead)
-            y += 0.7
-        bottom = Y1 - (0.75 if takeaway else 0)
+    def symbols(self, pairs, box, size=15, key_w=1.7):
+        """[(기호, 뜻)] 표 형태 목록."""
+        n = len(pairs)
+        rh = min(0.62, box.h / n)
+        for i, (k, v) in enumerate(pairs):
+            y = box.y + i * rh
+            chip = self.rect(Box(box.x, y + 0.05, key_w, rh - 0.1), fill_color=TINT2)
+            self.label(chip, f"`{k}`" if "`" not in k else k, size=size, bold=True, margin=0.04)
+            self.textbox(v, Box(box.x + key_w + 0.12, y, box.w - key_w - 0.12, rh), size=size,
+                         anchor="m", min_size=10, gap=0)
+
+    def callout(self, text, box, kind="key", size=16, fit_h=True):
+        """kind: key(청록 채움) | tip(옅은 청록) | warn(주황). fit_h면 내용 높이로 줄인다."""
+        if fit_h:
+            need = est_height([text], box.w - 0.5, size, gap=0.2, spacing=1.25) + 0.25
+            if need < box.h:
+                box = Box(box.x, box.y, box.w, max(0.6, need))
+        self.last_callout_box = box
+        fillc, color, line = {"key": (TEAL, WHITE, None), "tip": (TINT, INK, SKY),
+                              "warn": (ORANGE_TINT, INK, ORANGE)}[kind]
+        b = self.rect(box, fill_color=fillc, line=line)
+        self.label(b, text, size=size, color=color, bold=(kind == "key"), align="c" if kind == "key" else "l",
+                   margin=0.2)
+        return b
+
+    def takeaway(self, text, size=16):
+        """영역 맨 아래 한 줄 결론 바. 영역을 줄여 준다."""
+        b = Box(X0, Y1 - 0.58, W, 0.58)
+        self.callout(text, b, kind="key", size=size)
+        self.area = Box(self.area.x, self.area.y, self.area.w, self.area.h - 0.8)
+        return b
+
+    def table(self, header, rows, box=None, widths=None, size=14, min_size=9, highlight=(),
+              first_col_bold=True, align=None):
+        box = box or self.area
         nr, nc = len(rows) + 1, len(header)
-        col_widths = col_widths or [W / nc] * nc
-        tot = sum(col_widths)
-        col_widths = [c * W / tot for c in col_widths]
-        # 높이 추정
+        widths = widths or [1] * nc
+        tot = sum(widths)
+        widths = [w * box.w / tot for w in widths]
+
         def row_h(cells, sz):
-            return max(est_height([c], cw, sz, spacing=1.2, para_gap=0) for c, cw in zip(cells, col_widths)) + 0.08
+            return max(est_height([str(c)], cw - 0.16, sz, spacing=1.2, gap=0) for c, cw in zip(cells, widths)) + 0.06
+
         sz = size
-        while sz > 9 and sum(row_h(r, sz) for r in [header] + rows) > bottom - y - 0.1:
+        while sz > min_size and sum(row_h(r, sz) for r in [header] + rows) > box.h:
             sz -= 0.5
         heights = [row_h(r, sz) for r in [header] + rows]
-        gt = s.shapes.add_table(nr, nc, Inches(X0), Inches(y + 0.1), Inches(W), Inches(sum(heights)))
+        if sum(heights) > box.h * 1.05:
+            WARN.append(f"표 넘침 가능: {header[0]} ({sz}pt)")
+        gt = self.s.shapes.add_table(nr, nc, Inches(box.x), Inches(box.y), Inches(box.w), Inches(sum(heights)))
         tbl = gt.table
         tblPr = tbl._tbl.tblPr
-        for k in ("bandRow", "firstRow"):
-            tblPr.set(k, "0")
-        # 스타일 제거
+        tblPr.set("firstRow", "1")
+        tblPr.set("bandRow", "0")
         sid = tblPr.find(qn("a:tableStyleId"))
         if sid is not None:
-            sid.text = "{5940675A-B579-460E-94D1-54222C63F5DA}"  # No Style, Table Grid
-        for j, cw in enumerate(col_widths):
+            sid.text = "{5940675A-B579-460E-94D1-54222C63F5DA}"
+        for j, cw in enumerate(widths):
             tbl.columns[j].width = Inches(cw)
-        hl = set(highlight_rows)
+        hl = set(highlight)
         for i, r in enumerate([header] + rows):
             tbl.rows[i].height = Inches(heights[i])
             for j, val in enumerate(r):
                 cell = tbl.cell(i, j)
                 cell.margin_left = cell.margin_right = Inches(0.08)
-                cell.margin_top = cell.margin_bottom = Inches(0.04)
+                cell.margin_top = cell.margin_bottom = Inches(0.03)
                 cell.vertical_anchor = MSO_ANCHOR.MIDDLE
                 cell.fill.solid()
                 if i == 0:
                     cell.fill.fore_color.rgb = rgb(TEAL)
                 elif (i - 1) in hl:
-                    cell.fill.fore_color.rgb = rgb(ACCENT_BG)
+                    cell.fill.fore_color.rgb = rgb(ORANGE_TINT)
                 else:
-                    cell.fill.fore_color.rgb = rgb(WHITE if i % 2 else MINT)
-                tf = cell.text_frame
-                fill_tf(tf, [str(val)], size=sz, color=WHITE if i == 0 else DARK, bold=(i == 0 or j == 0),
-                        align="c" if i == 0 else "l", margin=0.06, para_gap=0)
-                self._cell_border(cell)
-        if takeaway:
-            self.takeaway(s, takeaway)
-        return s
+                    cell.fill.fore_color.rgb = rgb(WHITE if i % 2 else TINT)
+                a = "c" if i == 0 else (align[j] if align else "l")
+                fill(cell.text_frame, [str(val)], size=sz, color=WHITE if i == 0 else INK,
+                     bold=(i == 0 or (j == 0 and first_col_bold)), align=a, margin=0.04, gap=0)
+                _cell_border(cell)
+        return gt
 
-    @staticmethod
-    def _cell_border(cell, color=LINE):
-        tcPr = cell._tc.get_or_add_tcPr()
-        for tag in ("a:lnL", "a:lnR", "a:lnT", "a:lnB"):
-            ln = tcPr.makeelement(qn(tag), {"w": "6350"})
-            sf = ln.makeelement(qn("a:solidFill"), {})
-            sf.append(sf.makeelement(qn("a:srgbClr"), {"val": color}))
-            ln.append(sf)
-            tcPr.insert(0, ln) if False else tcPr.append(ln)
-        # schema order: lnL lnR lnT lnB ... solidFill must follow; move fill to the end
-        for f in tcPr.findall(qn("a:solidFill")):
-            tcPr.remove(f)
-            tcPr.append(f)
-
-    def compare(self, title: str, left: dict, right: dict, notes=None, lead=None, takeaway=None,
-                vs: str = "→"):
-        """좌우 비교. left/right = {'head':..,'body':[..], 'accent':bool}"""
-        s = self.new_slide(title, notes)
-        y = Y0
-        if lead:
-            self.lead(s, lead)
-            y += 0.7
-        bottom = Y1 - (0.75 if takeaway else 0)
-        gap = 0.8
-        cw = (W - gap) / 2
-        for k, side in enumerate((left, right)):
-            cx = X0 + k * (cw + gap)
-            acc = side.get("accent")
-            self.box(s, cx, y + 0.1, cw, bottom - y - 0.2, fill=ACCENT_BG if acc else MINT)
-            self.text(s, cx + 0.25, y + 0.2, cw - 0.5, 0.65, side["head"], size=21, bold=True,
-                      color=ACCENT if acc else TEAL, anchor="m", min_size=13)
-            self.text(s, cx + 0.25, y + 0.95, cw - 0.5, bottom - y - 1.2, side.get("body", []),
-                      size=16, bullets=True, min_size=10, para_gap=0.45)
-        c = self.circle_num(s, X0 + cw + gap / 2 - 0.3, (y + bottom) / 2 - 0.3, 0.6, vs,
-                            fill=TEAL2, size=18)
-        if takeaway:
-            self.takeaway(s, takeaway)
-        return s
-
-    def code(self, title: str, code: str, notes=None, lead=None, explain: list | None = None,
-             code_size=14):
-        """코드 블록(왼쪽) + 설명(오른쪽)."""
-        s = self.new_slide(title, notes)
-        y = Y0
-        if lead:
-            self.lead(s, lead)
-            y += 0.7
-        cw = W if not explain else 7.4
-        self.box(s, X0, y + 0.1, cw, Y1 - y - 0.1, fill=CODE_BG, line=LINE, radius=0.05)
+    def code(self, code, box, size=14, min_size=9, fit_h=True):
         lines = code.rstrip("\n").split("\n")
-        avail_h = Y1 - y - 0.4
         longest = max(len(l) for l in lines)
-        sz = code_size
-        while sz > 9 and (len(lines) * sz * 1.2 / 72 > avail_h or longest * sz * 0.6 / 72 > cw - 0.4):
+        sz = size
+        while sz > min_size and (len(lines) * sz * 1.22 / 72 > box.h - 0.3 or longest * sz * 0.61 / 72 > box.w - 0.3):
             sz -= 0.5
-        tb = s.shapes.add_textbox(Inches(X0 + 0.15), Inches(y + 0.2), Inches(cw - 0.3), Inches(Y1 - y - 0.3))
+        if fit_h:
+            box = Box(box.x, box.y, box.w, min(box.h, len(lines) * sz * 1.22 / 72 + 0.4))
+        self.last_code_box = box
+        self.rect(box, fill_color=CODE_BG, line=LINE, radius=0.06)
+        tb = self.s.shapes.add_textbox(Inches(box.x + 0.12), Inches(box.y + 0.12), Inches(box.w - 0.24),
+                                       Inches(box.h - 0.2))
         tf = tb.text_frame
         tf.word_wrap = True
         for i, ln in enumerate(lines):
             p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
             _no_bullet(p)
             p.line_spacing = 1.0
-            r = p.add_run()
-            r.text = ln if ln else " "
-            is_comment = ln.strip().startswith("#")
-            _set_run_font(r, size=sz, color="5E8C6A" if is_comment else DARK, mono=True)
-        if explain:
-            ex = X0 + cw + 0.3
-            self.text(s, ex, y + 0.1, X1 - ex, Y1 - y - 0.1, explain, size=16, bullets=True,
-                      min_size=10, para_gap=0.5)
-        return s
+            code_part, _, comment = ln.partition("#")
+            if code_part:
+                r = p.add_run()
+                r.text = code_part
+                _font(r, size=sz, color=INK, mono=True)
+            if _:
+                r = p.add_run()
+                r.text = "#" + comment
+                _font(r, size=sz, color="3F8A6E", mono=True)
+            if not ln:
+                r = p.add_run()
+                r.text = " "
+                _font(r, size=sz, mono=True)
+        return tb
 
-    def image(self, title: str, path: str, notes=None, lead=None, caption=None,
-              side: list | dict | None = None, img_w_ratio=0.58):
-        """그림(matplotlib 등) + 선택적 오른쪽 설명."""
-        s = self.new_slide(title, notes)
-        y = Y0
+    def timeline(self, events, box, highlight=(), body_size=13, fit_h=True):
+        """events: [(연도, 제목, 설명)]"""
+        n = len(events)
+        gap = 0.16
+        cw = (box.w - gap * (n - 1)) / n
+        need_max = max(0.3 + 0.82 + est_height([e[2]], cw - 0.2, body_size, gap=0.25, spacing=1.2) for e in events)
+        line_y = box.y + 0.72
+        self.rect(Box(box.x, line_y - 0.025, box.w, 0.05), fill_color=LINE, shape=MSO_SHAPE.RECTANGLE)
+        hl = set(highlight)
+        for i, (yr, head, body) in enumerate(events):
+            x = box.x + i * (cw + gap)
+            col = ORANGE if i in hl else TEAL
+            self.textbox(str(yr), Box(x, box.y, cw, 0.5), size=20, bold=True, color=col, align="c",
+                         anchor="b", min_size=11, margin=0.0, gap=0)
+            self.rect(Box(x + cw / 2 - 0.12, line_y - 0.12, 0.24, 0.24), fill_color=col, shape=MSO_SHAPE.OVAL)
+            need = 0.2 + 0.82 + est_height([body] if isinstance(body, str) else body, cw - 0.2, body_size, gap=0.25, spacing=1.2)
+            cb = Box(x, line_y + 0.3, cw, box.b - line_y - 0.3)
+            if fit_h:
+                cb = Box(x, line_y + 0.3, cw, min(cb.h, max(need_max, 1.4)))
+            self.rect(cb, fill_color=ORANGE_TINT if i in hl else TINT)
+            inner = cb.inset(0.08, 0.1)
+            self.textbox(head, Box(inner.x, inner.y, inner.w, 0.75), size=15, bold=True, color=col,
+                         align="c", anchor="m", min_size=10, margin=0.02, gap=0)
+            self.textbox(body, Box(inner.x, inner.y + 0.82, inner.w, inner.h - 0.82), size=body_size,
+                         min_size=9, margin=0.02, gap=0.25)
+
+
+def _cell_border(cell, color=LINE):
+    tcPr = cell._tc.get_or_add_tcPr()
+    fills = tcPr.findall(qn("a:solidFill"))
+    for f in fills:
+        tcPr.remove(f)
+    for tag in ("a:lnL", "a:lnR", "a:lnT", "a:lnB"):
+        ln = tcPr.makeelement(qn(tag), {"w": "6350"})
+        sf = ln.makeelement(qn("a:solidFill"), {})
+        sf.append(sf.makeelement(qn("a:srgbClr"), {"val": color}))
+        ln.append(sf)
+        tcPr.append(ln)
+    for f in fills:
+        tcPr.append(f)
+
+
+# ================================================================ deck
+COURSE = [
+    (1, "배울 수 있을까?", "Tensor · 학습", "1943–1958"),
+    (2, "직선으로 안 되면?", "Perceptron · MLP", "1958–1986"),
+    (3, "공간 · 깊이는?", "CNN · ResNet", "1989–2016"),
+    (4, "먼 정보를 기억하려면?", "RNN · LSTM · Seq2Seq", "1986–2014"),
+    (5, "원문을 다시 보면?", "Attention", "2014–2017"),
+    (6, "참조만으로 만들면?", "Transformer", "2017–"),
+]
+
+
+class Deck:
+    def __init__(self, week, title, date, event=EVENT):
+        self.prs = Presentation(TEMPLATE)
+        self.week = week
+        self.date = date
+        self.event = event
+        s_title, s_proto, s_last = list(self.prs.slides)
+        self.layout = s_proto.slide_layout
+        self.sec_layout = next(l for l in self.prs.slide_masters[1].slide_layouts if l.name == "제목 슬라이드")
+        # --- 표지: 템플릿 개체 틀 그대로, 글자만 교체
+        for sh in s_title.placeholders:
+            idx = sh.placeholder_format.idx
+            if idx == 10:
+                _replace_text(sh, event)
+            elif idx == 0:
+                _replace_text(sh, f"Week {week}. {title}")
+                n = text_units(f"Week {week}. {title}")
+                if n > 24:
+                    for p in sh.text_frame.paragraphs:
+                        for r in p.runs:
+                            r.font.size = Pt(max(22, int(32 * 24 / n)))
+            # idx 1 (발표자/이메일)은 템플릿 그대로
+        # --- 푸터 원본(날짜·발표자·쪽번호)
+        self._footer = [copy.deepcopy(sp._element) for sp in s_proto.shapes
+                        if not (sp.is_placeholder and sp.placeholder_format.idx in (0, 1))]
+        self._ctxs = []
+        self.n = 0
+
+    # ---------------------------------------------------------------- slides
+    def slide(self, title, lead=None, stage=None, notes=None):
+        s = self.prs.slides.add_slide(self.layout)
+        for ph in s.placeholders:
+            if ph.placeholder_format.idx == 0:
+                tf = ph.text_frame
+                tf.text = title
+                n = text_units(title)
+                if n > 30:
+                    for r in tf.paragraphs[0].runs:
+                        r.font.size = Pt(max(20, int(32 * 30 / n)))
+        tree = s.shapes._spTree
+        for el in self._footer:
+            el = copy.deepcopy(el)
+            for t in el.iter(qn("a:t")):
+                if re.fullmatch(r"\d{4}-\d{2}-\d{2}", t.text or ""):
+                    t.text = self.date
+                elif (t.text or "").strip() == "AICA Lab Meeting":
+                    t.text = self.event
+            tree.append(el)
+        if notes:
+            s.notes_slide.notes_text_frame.text = notes
+        ctx = S(self, s, has_lead=bool(lead) or bool(stage))
         if lead:
-            self.lead(s, lead)
-            y += 0.7
-        cap_h = 0.45 if caption else 0
-        iw = W * img_w_ratio if side else W
-        self._image_fit(s, path, X0, y + 0.1, iw, Y1 - y - 0.15 - cap_h)
-        if caption:
-            self.text(s, X0, Y1 - cap_h, iw, cap_h, caption, size=12, color=GRAY, align="c", anchor="m")
-        if side:
-            sx = X0 + iw + 0.3
-            if isinstance(side, dict):
-                self._side_panel(s, sx, y + 0.1, X1 - sx, Y1 - y - 0.15, side)
-            else:
-                self.text(s, sx, y + 0.1, X1 - sx, Y1 - y - 0.15, side, size=16, bullets=True,
-                          min_size=10, para_gap=0.5)
+            lw = W - (1.55 if stage else 0)
+            ctx.textbox(lead, Box(X0, Y_TOP, lw, 0.55), size=19, bold=True, color=TEAL, anchor="m",
+                        min_size=13, margin=0.02, gap=0)
+        if stage:
+            fc, tc = STAGES[stage]
+            chip = ctx.rect(Box(X1 - 1.3, Y_TOP + 0.08, 1.3, 0.4), fill_color=fc, radius=0.2)
+            fill(chip.text_frame, [stage], size=13, color=tc, bold=True, align="c", anchor="m", margin=0.02, gap=0)
+        self.n += 1
+        self._ctxs.append(ctx)
+        return ctx
+
+    def finish(self, ctx):
+        """본문 개체 틀을 쓰지 않은 슬라이드에서 빈 개체 틀 제거."""
+        if not ctx._used_body and ctx.body_ph is not None:
+            ctx.body_ph._element.getparent().remove(ctx.body_ph._element)
+            ctx.body_ph = None
+
+    def section(self, title, subtitle="", notes=None):
+        """템플릿 '제목 슬라이드' 레이아웃(로고 포함)으로 만든 구역 표지."""
+        s = self.prs.slides.add_slide(self.sec_layout)
+        for ph in s.placeholders:
+            idx = ph.placeholder_format.idx
+            tf = ph.text_frame
+            if idx == 0:
+                lines = title.split("\n")
+                fill(tf, lines, size=40 if len(lines) == 1 else 36, bold=True, color=INK, align="c",
+                     anchor="b", gap=0.1, set_face=True)
+                if len(lines) > 1:
+                    for r in tf.paragraphs[0].runs:
+                        r.font.size = Pt(22)
+                        r.font.color.rgb = rgb(TEAL)
+            elif idx == 1:
+                if subtitle:
+                    fill(tf, subtitle.split("\n"), size=20, color=GRAY, align="c", gap=0.2)
+                else:
+                    ph._element.getparent().remove(ph._element)
+        if notes:
+            s.notes_slide.notes_text_frame.text = notes
+        self.n += 1
         return s
 
-    def stats(self, title: str, stats: list[tuple], notes=None, lead=None, below: list | None = None):
-        """큰 숫자 강조: stats=[(big, label)]."""
-        s = self.new_slide(title, notes)
-        y = Y0
-        if lead:
-            self.lead(s, lead)
-            y += 0.7
-        n = len(stats)
-        gap = 0.3
-        cw = (W - gap * (n - 1)) / n
-        bh = 2.2
-        for i, (big, label) in enumerate(stats):
-            cx = X0 + i * (cw + gap)
-            self.box(s, cx, y + 0.1, cw, bh, fill=MINT)
-            self.text(s, cx + 0.1, y + 0.2, cw - 0.2, 1.2, big, size=48, bold=True, color=ACCENT,
-                      align="c", anchor="m", min_size=20)
-            self.text(s, cx + 0.15, y + 1.4, cw - 0.3, bh - 1.35, label, size=15, align="c",
-                      min_size=10, anchor="t")
-        if below:
-            yy = y + 0.1 + bh + 0.35
-            self.text(s, X0, yy, W, Y1 - yy, below, size=16, bullets=True, min_size=11, para_gap=0.5)
-        return s
+    # ---------------------------------------------------------------- recipes
+    def course_map(self, ctx, box, current):
+        n = len(COURSE)
+        gap = 0.22
+        bw = (box.w - gap * (n - 1)) / n
+        for i, (wk, q, topic, era) in enumerate(COURSE):
+            b = Box(box.x + i * (bw + gap), box.y, bw, box.h)
+            cur = wk == current
+            done = wk < current
+            ctx.rect(b, fill_color=TEAL if cur else (TINT2 if done else TINT),
+                     line=None if cur else (None if done else LINE))
+            inner = b.inset(0.08, 0.1)
+            col = WHITE if cur else (TEAL if done else GRAY)
+            h = inner.h
+            ctx.textbox(f"Week {wk}", Box(inner.x, inner.y, inner.w, h * 0.17), size=13, bold=True,
+                        color=WHITE if cur else SKY, align="c", margin=0, gap=0, anchor="m", autofit=False)
+            ctx.textbox(q, Box(inner.x, inner.y + h * 0.18, inner.w, h * 0.42), size=15, bold=True, color=col,
+                        align="c", anchor="m", min_size=10, margin=0, gap=0)
+            ctx.textbox(topic, Box(inner.x, inner.y + h * 0.61, inner.w, h * 0.22), size=12, color=col,
+                        align="c", anchor="m", min_size=8, margin=0, gap=0)
+            ctx.textbox(era, Box(inner.x, inner.y + h * 0.83, inner.w, h * 0.17), size=11,
+                        color=WHITE if cur else GRAY, align="c", anchor="m", margin=0, gap=0, autofit=False)
+            if i < n - 1:
+                ctx.arrow(b.r + 0.02, b.y + b.h / 2, b.r + gap - 0.02, b.y + b.h / 2, width=1.5)
 
-    def quiz(self, title: str, questions: list[tuple], notes=None, lead=None):
-        """확인 문제: [(질문, 정답/해설)] — 질문은 슬라이드, 정답은 노트에 자동 기록."""
-        ans = "\n".join(f"Q{i+1}. {_plain(q)}\n  → {_plain(a)}" for i, (q, a) in enumerate(questions))
-        s = self.new_slide(title, (notes + "\n\n" if notes else "") + "[정답]\n" + ans)
-        y = Y0
-        if lead:
-            self.lead(s, lead)
-            y += 0.7
-        n = len(questions)
-        gap = 0.2
-        rh = (Y1 - y - 0.1 - gap * (n - 1)) / n
-        for i, (q, _) in enumerate(questions):
-            ry = y + 0.1 + i * (rh + gap)
-            self.box(s, X0, ry, W, rh, fill=MINT)
-            d = min(0.55, rh - 0.15)
-            self.circle_num(s, X0 + 0.2, ry + (rh - d) / 2, d, f"Q{i+1}", size=13)
-            self.text(s, X0 + 0.95, ry, W - 1.1, rh, q, size=17, anchor="m", min_size=10)
-        return s
+    def quiz(self, title, qa, lead="답을 자기 말로 설명할 수 있는가? (정답은 발표자 노트)", notes=""):
+        """셀프 체크: 질문은 슬라이드, 정답은 발표자 노트."""
+        ans = "\n".join(f"Q{i+1}. {plain(q)}\n  → {plain(a)}" for i, (q, a) in enumerate(qa))
+        ctx = self.slide(title, lead=lead, stage="검증", notes=(notes + "\n\n" if notes else "") + "[정답]\n" + ans)
+        n = len(qa)
+        gap = 0.16
+        rh = min(1.05, (ctx.area.h - gap * (n - 1)) / n)
+        for i, (q, _) in enumerate(qa):
+            b = Box(ctx.area.x, ctx.area.y + i * (rh + gap), ctx.area.w, rh)
+            ctx.rect(b, fill_color=TINT)
+            dd = min(0.5, rh - 0.12)
+            ctx.badge(b.x + 0.15, b.y + (rh - dd) / 2, dd, f"Q{i+1}", size=11)
+            ctx.textbox(q, Box(b.x + 0.8, b.y, b.w - 0.95, rh), size=17, anchor="m", min_size=11, gap=0)
+        self.finish(ctx)
+        return ctx
 
-    def summary(self, title: str, items: list[str], notes=None, next_week: str | None = None):
-        """번호 원 + 요약 문장. next_week 이 있으면 하단에 '다음 주' 박스."""
-        s = self.new_slide(title, notes)
-        bottom = Y1 - (0.8 if next_week else 0)
+    # ---------------------------------------------------------------- 공통 구성
+    def question(self, q, sub="", notes=None):
+        """이번 주의 질문 (템플릿 구역 슬라이드)."""
+        return self.section(f"Week {self.week} · 이번 주의 질문\n{q}", sub, notes=notes)
+
+    def part(self, k, title, question, notes=None):
+        return self.section(f"Part {k}\n{title}", question, notes=notes)
+
+    def bridge(self, learned, remaining, question, notes=None, title="지난 주에서 이번 주로"):
+        """지난 주 배운 것 → 남은 문제 → 이번 주 질문."""
+        ctx = self.slide(title, lead="매 주는 지난 주가 남긴 문제에서 출발한다", stage="도입", notes=notes)
+        ctx.flow([{"head": "지난 주에 배운 것", "body": learned},
+                  {"head": "아직 풀리지 않은 문제", "body": remaining, "tone": "accent"},
+                  {"head": "이번 주의 질문", "body": question, "tone": "dark"}],
+                 Box(ctx.area.x, ctx.area.y + 0.2, ctx.area.w, min(ctx.area.h - 0.4, 4.2)),
+                 body_size=18, head_size=20, gap=0.55)
+        return ctx
+
+    def roadmap(self, parts, goals, notes=None):
+        """과정 지도(현재 주 강조) + 오늘의 순서 + 학습 목표."""
+        ctx = self.slide("오늘의 지도", lead=f"여섯 질문 중 {self.week}번째 — 오늘의 순서와 목표",
+                         stage="도입", notes=notes)
+        top, bot = ctx.area.top(2.05, gap=0.3)
+        self.course_map(ctx, top, self.week)
+        L, R = bot.cols(0.5, gap=0.4)
+        ctx.rect(L, fill_color=TINT)
+        ctx.textbox("오늘의 순서", Box(L.x + 0.2, L.y + 0.1, L.w - 0.4, 0.4), size=16, bold=True,
+                    color=TEAL, anchor="m", gap=0)
+        items = [f"**Part {i+1}** {t}" for i, t in enumerate(parts)]
+        ctx.textbox(items, Box(L.x + 0.2, L.y + 0.55, L.w - 0.4, L.h - 0.65), size=15, min_size=10, gap=0.3)
+        ctx.rect(R, fill_color=WHITE, line=LINE)
+        ctx.textbox("끝나면 할 수 있는 것", Box(R.x + 0.2, R.y + 0.1, R.w - 0.4, 0.4), size=16, bold=True,
+                    color=TEAL, anchor="m", gap=0)
+        ctx.textbox(goals, Box(R.x + 0.2, R.y + 0.55, R.w - 0.4, R.h - 0.65), size=15, min_size=10,
+                    bullets=True, gap=0.3)
+        return ctx
+
+    def glossary(self, rows, notes=None):
+        """오늘 새로 나오는 용어: (용어, 한 줄 뜻, 비유/예)."""
+        ctx = self.slide("오늘의 새 용어", lead="낯선 단어를 먼저 한 번 보고 시작한다", stage="도입", notes=notes)
+        ctx.table(["용어", "한 줄 뜻", "비유 · 예"], rows, widths=[2.2, 5.2, 4.9], size=15)
+        return ctx
+
+    def summary(self, items, notes=None, title="한 장 요약"):
+        ctx = self.slide(title, lead="오늘 배운 것을 한 줄씩", stage="정리", notes=notes)
         n = len(items)
-        gap = 0.15
-        rh = min(0.95, (bottom - Y0 - 0.1 - gap * (n - 1)) / n)
+        gap = 0.14
+        rh = min(0.95, (ctx.area.h - gap * (n - 1)) / n)
         for i, it in enumerate(items):
-            ry = Y0 + 0.1 + i * (rh + gap)
-            d = min(0.55, rh - 0.1)
-            self.circle_num(s, X0, ry + (rh - d) / 2, d, i + 1, size=15)
-            self.text(s, X0 + d + 0.25, ry, W - d - 0.3, rh, it, size=18, anchor="m", min_size=11)
-        if next_week:
-            b = self.box(s, X0, Y1 - 0.65, W, 0.65, fill=ACCENT_BG)
-            self.text_in(b, f"**다음 주 →** {next_week}", size=16, color=DARK, align="l", margin=0.25)
-        return s
+            y = ctx.area.y + i * (rh + gap)
+            dd = min(0.5, rh - 0.12)
+            ctx.badge(ctx.area.x, y + (rh - dd) / 2, dd, i + 1, size=13)
+            ctx.textbox(it, Box(ctx.area.x + dd + 0.25, y, ctx.area.w - dd - 0.3, rh), size=18,
+                        anchor="m", min_size=11, gap=0)
+        return ctx
 
-    def blank(self, title: str, notes=None):
-        """자유 배치용 빈 본문 슬라이드(헤더/푸터 포함)."""
-        return self.new_slide(title, notes)
+    def misconceptions(self, rows, notes=None):
+        ctx = self.slide("흔한 오해 바로잡기", lead="틀린 문장을 계산의 언어로 고쳐 쓴다", stage="검증", notes=notes)
+        ctx.table(["자주 듣는 말", "더 정확한 설명"], rows, widths=[4.6, 7.7], size=15)
+        return ctx
 
-    # ------------------------------------------------------------ save
-    def save(self, path: str):
+    def homework(self, items, notes=None, lab=None):
+        ctx = self.slide("이번 주 과제", lead="제출물이 분명한 과제 — 결과를 보기 전에 먼저 예측해 적는다",
+                         stage="실습", notes=notes)
+        if lab:
+            L, R = ctx.cols(0.55)
+            ctx.cards([{"head": h, "body": b} for h, b in items], L, cols=1, numbered=True, body_size=14)
+            ctx.code(lab, R, size=13)
+        else:
+            ctx.cards([{"head": h, "body": b} for h, b in items], cols=1, numbered=True, body_size=15)
+        return ctx
+
+    def references(self, rows, notes=None):
+        ctx = self.slide("참고 자료", lead="원문은 필요한 절만 골라 읽는다", stage="정리", notes=notes)
+        ctx.table(["자료", "이번 주에 읽을 부분"], rows, widths=[7.3, 5.0], size=14)
+        return ctx
+
+    def handoff(self, solved, remaining, next_q, notes=None):
+        """이번 주가 해결한 것 / 남긴 문제 / 다음 주 질문."""
+        ctx = self.slide("남은 문제와 다음 질문", lead="답은 새 문제를 남긴다 — 다음 주는 여기서 출발한다",
+                         stage="정리", notes=notes)
+        ctx.flow([{"head": "이번 주에 해결한 것", "body": solved},
+                  {"head": "아직 남은 문제", "body": remaining, "tone": "accent"},
+                  {"head": f"Week {self.week + 1}의 질문" if self.week < 6 else "다음 여정", "body": next_q,
+                   "tone": "dark"}], Box(ctx.area.x, ctx.area.y + 0.2, ctx.area.w, min(ctx.area.h - 0.4, 4.2)),
+                 body_size=18, head_size=20, gap=0.55)
+        return ctx
+
+    def save(self, path):
+        for c in self._ctxs:
+            self.finish(c)
         prs = self.prs
-        sldIdLst = prs.slides._sldIdLst
-        ids = list(sldIdLst)
-        # 원본 예시(2번) 삭제, 마지막 장을 맨 뒤로
-        proto_id, last_id = ids[1], ids[2]
-        prs.part.drop_rel(proto_id.rId)
-        sldIdLst.remove(proto_id)
-        sldIdLst.remove(last_id)
-        sldIdLst.append(last_id)
+        lst = prs.slides._sldIdLst
+        ids = list(lst)
+        proto, last = ids[1], ids[2]
+        prs.part.drop_rel(proto.rId)
+        lst.remove(proto)
+        lst.remove(last)
+        lst.append(last)
         os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
         prs.save(path)
+        if WARN:
+            print("\n".join("  ! " + w for w in WARN))
         return path
 
 
-# ------------------------------------------------------------ matplotlib helper
+def _replace_text(sh, text):
+    tf = sh.text_frame
+    p0 = tf.paragraphs[0]
+    runs = p0.runs
+    if runs:
+        runs[0].text = text
+        for r in runs[1:]:
+            r._r.getparent().remove(r._r)
+    else:
+        p0.add_run().text = text
+    for p in tf.paragraphs[1:]:
+        p._p.getparent().remove(p._p)
+
+
+# ================================================================ matplotlib
 def mpl_setup():
-    """한글 폰트가 설정된 matplotlib.pyplot 반환."""
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     from matplotlib import font_manager
-    for f in ("/usr/share/fonts/truetype/nanum/NanumGothic.ttf",):
-        if os.path.exists(f):
-            font_manager.fontManager.addfont(f)
-            plt.rcParams["font.family"] = "NanumGothic"
-    plt.rcParams["axes.unicode_minus"] = False
-    plt.rcParams["axes.edgecolor"] = "#" + LINE
-    plt.rcParams["axes.labelcolor"] = "#" + DARK
-    plt.rcParams["xtick.color"] = "#" + GRAY
-    plt.rcParams["ytick.color"] = "#" + GRAY
-    plt.rcParams["savefig.dpi"] = 200
-    plt.rcParams["savefig.bbox"] = "tight"
+    f = "/usr/share/fonts/truetype/nanum/NanumGothic.ttf"
+    if os.path.exists(f):
+        font_manager.fontManager.addfont(f)
+        plt.rcParams["font.family"] = "NanumGothic"
+    plt.rcParams.update({"axes.unicode_minus": False, "axes.edgecolor": "#" + LINE,
+                         "axes.labelcolor": "#" + INK, "xtick.color": "#" + GRAY,
+                         "ytick.color": "#" + GRAY, "savefig.dpi": 200, "savefig.bbox": "tight",
+                         "axes.spines.top": False, "axes.spines.right": False,
+                         "mathtext.fontset": "dejavusans"})
     return plt
 
 
-PALETTE_HEX = {k: "#" + v for k, v in dict(TEAL=TEAL, TEAL2=TEAL2, MINT=MINT, DARK=DARK, GRAY=GRAY,
-                                           ACCENT=ACCENT, LINE=LINE).items()}
+HEX = {k: "#" + v for k, v in dict(TEAL=TEAL, SKY=SKY, CYAN=CYAN, AQUA=AQUA, ORANGE=ORANGE, INK=INK,
+                                   GRAY=GRAY, LINE=LINE, TINT=TINT, TINT2=TINT2).items()}
