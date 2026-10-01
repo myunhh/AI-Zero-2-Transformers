@@ -787,6 +787,7 @@ class Deck:
         if not ctx._used_body and ctx.body_ph is not None:
             ctx.body_ph._element.getparent().remove(ctx.body_ph._element)
             ctx.body_ph = None
+            ctx._base_n -= 1  # 개체 틀이 빠졌으므로 본문 도형 시작 위치도 하나 앞으로
         shapes = list(ctx.s.shapes)[ctx._base_n:]
         if ctx._used_body and ctx.body_ph is not None:
             shapes.append(ctx.body_ph)

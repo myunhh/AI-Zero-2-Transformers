@@ -13,7 +13,7 @@ d = Deck(6, "Transformer 완성: 조립·학습·생성", date="2026-11-09")
 
 # ============================================================ 도입
 d.question("참조만으로\n시퀀스 모델을 만들면?",
-           "2017 → · FFN · Residual · LayerNorm · Mask · 학습 · 생성 · 그 이후",
+           "2017 → FFN · Residual · LayerNorm · Mask · 학습 · 생성 · 그 이후",
            notes="마지막 주. 지난주의 attention 블록에 FFN, residual, LayerNorm을 붙여 층을 완성하고, mask와 teacher forcing으로 정답을 훔쳐보지 않게 학습시키고, "
                  "토큰을 하나씩 생성한다. 그리고 비용을 계산하고, 직접 실험하는 법과 Transformer 이후의 길을 본다. 1주차의 도착점 그림을 오늘 모두 채운다.")
 
@@ -21,8 +21,8 @@ d.bridge(["**Attention**: 점수 → softmax → 가중합", "Q · K · V와 **M
          ["attention만으로는 **토큰별 비선형 변환**이 없다", "깊게 쌓기 · 정답을 **훔쳐보지 않고** 학습하기 · **생성**하기"],
          ["**참조만으로**", "**시퀀스 모델을 만들면?**", "조립 → 학습 → 생성 → 그 이후"])
 
-d.roadmap(["Encoder 한 층 완성: FFN · Residual · LayerNorm", "Decoder: 정답을 훔쳐보지 않고 배우기",
-           "입력부터 logits까지, 파라미터 세기", "학습: 확률을 정답 쪽으로", "생성과 비용: KV Cache · 연산량 · 메모리",
+d.roadmap(["Encoder 한 층 완성: FFN · Residual · LayerNorm", "Decoder: 정답을 훔쳐보지 않고 배우기 · shape과 파라미터 세기",
+           "학습: 확률을 정답 쪽으로", "생성과 비용: KV Cache · 연산량 · 메모리",
            "직접 실험하기", "Transformer 이후, 그리고 과정 마무리"],
           ["Encoder / Decoder 한 층의 **모든 sublayer와 shape**을 그린다",
            "**shift + causal mask**가 정답 누출을 막는 방식을 설명한다",
@@ -60,23 +60,15 @@ s = d.slide("FFN: 모은 정보를 토큰마다 변환", lead="FFN(x) = max(0, x
                   "후속 모델은 ReLU 대신 GELU, SwiGLU 등을 쓴다.")
 top, bot = s.area.top(1.0, gap=0.3)
 s.formula("FFN(x) = max(0, x W1 + b1) W2 + b2      d → d_ff → d", top, size=22)
-L, R = bot.cols(0.55, gap=0.4)
-s.table(["", "Attention (A · V)", "FFN"], [["하는 일", "**위치 간** 정보 결합", "**각 위치**의 비선형 특징 변환"],
-                                          ["다른 토큰과 섞나?", "예", "**아니오**"], ["shape", "(B, N, d) 유지", "(B, N, d) → (B, N, d_ff) → (B, N, d)"],
-                                          ["파라미터", "W_Q · W_K · W_V · W_O", "W1 (d × d_ff), W2 (d_ff × d)"]], L, size=14, widths=[1.5, 2.4, 3.0])
-s.bullets(["2주차 **MLP 그대로**, 토큰마다 적용", "같은 층 안에선 모든 위치가 **같은 FFN**", "층마다는 **별개** 파라미터",
-           "base: 512 → **2048** → 512", "후속: GELU · SwiGLU 등"], R)
-
-s = d.slide("Residual: 기존 표현을 보존하는 통로", lead="x + Sublayer(x) — 더하려면 shape이 같아야 하므로 모든 sublayer가 d로 돌아온다", stage="아이디어",
-            notes="3주차 ResNet의 잔차 연결 그대로. 각 sublayer(attention, FFN)는 입력에 더할 '변화량'을 만든다. "
-                  "원소별로 더하려면 입력과 출력 shape이 같아야 한다 — 그래서 attention의 W_O와 FFN의 W2가 모두 d로 돌아온다. "
-                  "잔차 경로는 깊은 모델의 최적화를 돕는 설계지만, 모든 깊이·설정에서 안정성을 보장하지는 않는다.")
-rest = s.cards([{"head": "식", "body": ["y = x + Sublayer(x)", "Sublayer = attention 또는 FFN"]},
-                {"head": "shape 조건", "body": ["더하려면 **같은 shape**", "→ W_O, W2가 모두 **d**로 복귀"]},
-                {"head": "3주차 연결", "tone": "accent", "body": ["ResNet (2015)의 잔차 연결", "기울기·정보가 흐르는 **지름길**"]}],
-               cols=3, body_size=17, head_size=18)
-s.callout("잔차 경로는 최적화를 **돕는** 설계 — 모든 깊이·설정에서 안정성을 **보장**하지는 않는다.",
-          Box(rest.x, rest.y + 0.1, rest.w, 0.8), kind="tip", size=16)
+s.table(["", "Attention (가중합 A·V)", "FFN"],
+        [["하는 일", "**위치 간** 정보 결합", "**각 위치**의 비선형 특징 변환 — 2주차 **MLP 그대로**"],
+         ["다른 토큰과 섞나?", "예", "**아니오**"], ["shape", "(B, N, d) 유지", "(B, N, d) → (B, N, d_ff) → (B, N, d)"],
+         ["파라미터", "W_Q · W_K · W_V · W_O", "W1 (d × d_ff), W2 (d_ff × d)"],
+         ["공유 범위", "한 층 안의 모든 위치가 같은 투영", "한 층 안의 모든 위치가 **같은 FFN** — 층마다는 **별개**"],
+         ["base · 후속", "H = 8, d_h = 64 · GQA/MQA 등", "512 → **2048** → 512 · ReLU → GELU, SwiGLU"]],
+        Box(bot.x, bot.y, bot.w, 3.0), size=15, widths=[2.0, 4.2, 6.1])
+s.callout("‘attention은 토큰 섞기, FFN은 특징 변환’은 좋은 첫 설명 — 단, attention의 투영 W_Q·W_K·W_V·W_O도 **특징을 바꾼다**.",
+          Box(bot.x, bot.y + 3.25, bot.w, 0.9), kind="tip", size=15)
 
 s = d.slide("LayerNorm은 어느 축을 정규화하나", lead="(B, N, d) 입력에서 LayerNorm(d)는 토큰 하나의 d개 특징으로 평균·분산을 낸다", stage="계산",
             notes="토큰 하나 x ∈ ℝ^d에서 평균과 분산을 구해 정규화하고, 학습되는 γ, β로 scale·shift. batch나 sequence 전체를 한꺼번에 정규화하지 않는다(개념 확인 12). "
@@ -85,8 +77,8 @@ s = d.slide("LayerNorm은 어느 축을 정규화하나", lead="(B, N, d) 입력
 L, R = s.cols(0.55)
 s.image(A("week6/ln_axis.png"), L)
 s.formula("LN(x) = γ ⊙ (x − μ) / √(σ² + ε) + β", Box(R.x, R.y, R.w, 0.9), size=17)
-s.table(["x", "μ", "σ²", "(x − μ) / σ"], [["(1, 2, 3, 4)", "2.5", "1.25", "(−1.34, −0.45, 0.45, 1.34)"]],
-        Box(R.x, R.y + 1.15, R.w, 1.0), size=13, align="cccc")
+s.table(["x", "μ", "분산 σ²", "(x − μ) / σ"], [["(1, 2, 3, 4)", "2.5", "1.25", "(−1.34, −0.45, 0.45, 1.34)"]],
+        Box(R.x, R.y + 1.15, R.w, 1.0), size=15, align="cccc")
 s.bullets(["**토큰마다** d개 값으로 μ, σ 계산", "γ, β (d차원)는 학습되고 모든 토큰이 **공유**", "batch 전체가 아니다 (≠ BatchNorm)"],
           Box(R.x, R.y + 2.4, R.w, R.h - 2.4), size=15)
 
@@ -101,21 +93,28 @@ s.table(["", "Post-LN (원형)", "Pre-LN (후속)"], [["식", "LN(x + F(x))", "x
 s.callout("==주의== 비교할 때 optimizer · 학습률 · **warm-up** · 깊이를 통제한다. 한 설정의 결과로 보편적 우열을 말하지 않는다.",
           Box(R.x, R.y + 2.35, R.w, 1.4), kind="warn", size=15)
 
-s = d.slide("Encoder 한 층: 식과 shape", lead="입력과 출력이 모두 (B, S, d) — 그래서 같은 설계를 L번 쌓을 수 있다", stage="정리",
-            notes="Encoder 한 층(원형 Post-LN, dropout 포함): U = LN(X + Dropout(MHA(X, X, X))), X′ = LN(U + Dropout(FFN(U))). "
+s = d.slide("Encoder 한 층: 잔차 · Dropout · 식과 shape", lead="x + Sublayer(x)로 더하려면 shape이 같아야 한다 — 입력과 출력이 모두 (B, S, d)라서 L번 쌓을 수 있다",
+            stage="정리",
+            notes="잔차 연결은 3주차 ResNet 그대로. 각 sublayer(attention, FFN)는 입력에 더할 '변화량'을 만든다. "
+                  "원소별로 더하려면 입력과 출력 shape이 같아야 한다 — 그래서 attention의 W_O와 FFN의 W2가 모두 d로 돌아온다. "
+                  "잔차 경로는 깊은 모델의 최적화를 돕는 설계지만, 모든 깊이·설정에서 안정성을 보장하지는 않는다. "
+                  "Dropout은 학습 때 일부 값을 무작위로 0으로 만들어 과적합을 억제하는 규제(3주차 AlexNet) — 원형은 각 sublayer 출력에 0.1. 평가 때는 끈다(model.eval()). "
+                  "Encoder 한 층(원형 Post-LN, dropout 포함): U = LN(X + Dropout(MHA(X, X, X))), X′ = LN(U + Dropout(FFN(U))). "
                   "MHA(·)는 내부 투영을 포함한 모듈 표기. 각 층의 입출력은 (B, S, d). 6층을 쌓아 최종 출력 E를 얻는다. "
                   "'같은 층을 반복'은 같은 설계라는 뜻이지 가중치 공유가 아니다 — 층마다 파라미터는 별개.")
-top, bot = s.area.top(1.5, gap=0.3)
-s.formula(["U  = LN( X + Dropout( MHA(X, X, X) ) )", "X′ = LN( U + Dropout( FFN(U) ) )"], top, size=22)
-mid, low = bot.top(1.8, gap=0.3)
+top, bot = s.area.top(1.35, gap=0.25)
+s.formula(["U  = LN( X + Dropout( MHA(X, X, X) ) )", "X′ = LN( U + Dropout( FFN(U) ) )"], top, size=21)
+mid, low = bot.top(1.45, gap=0.25)
 s.flow([{"head": "X", "body": "(B, S, d)"}, {"head": "Self-attention", "body": "+ 잔차 · LN"}, {"head": "FFN", "body": "+ 잔차 · LN"},
         {"head": "X′", "body": "(B, S, d)", "tone": "dark"}, {"head": "× 6층", "body": "최종 출력 **E**", "tone": "accent"}], mid,
-       body_size=15, head_size=17, gap=0.35)
-s.bullets(["Self-attention으로 **다른 위치의 정보를 모으고**, FFN으로 **각 위치의 표현을 바꾼다**",
-           "‘같은 층 반복’ = 같은 설계일 뿐, **층마다 파라미터는 별개**"], low, size=16)
+       body_size=14, head_size=16, gap=0.35)
+s.bullets(["**잔차** x + Sublayer(x): 더하려면 **같은 shape** → W_O, W2가 모두 **d**로 복귀 — 3주차 ResNet의 지름길 (안정성을 **보장**하지는 않음)",
+           "**Dropout**: 학습 때 일부 값을 무작위로 0 — 과적합 억제 (3주차 AlexNet), 평가 때는 끈다",
+           "Self-attention으로 **다른 위치의 정보를 모으고**, FFN으로 **각 위치의 표현을 바꾼다**",
+           "‘같은 층 반복’ = 같은 설계일 뿐, **층마다 파라미터는 별개**"], low, size=15)
 
 # ============================================================ Part 2
-d.part(2, "Decoder: 정답을 훔쳐보지 않고 배우기", "정답 문장을 입력으로 주면서도, 자기 정답을 보지 못하게 하려면?")
+d.part(2, "Decoder: 정답을 훔쳐보지 않고 배우기", "정답 문장을 입력으로 주면서도 자기 정답을 보지 못하게 하려면? — 그리고 한 샘플을 끝까지 따라가며 파라미터를 센다")
 
 s = d.slide("문제: 정답을 통째로 주면?", lead="학습 때 정답 문장 전체를 Decoder에 넣고 한 번에 계산하면 — 각 위치가 자기 정답을 볼 수 있다", stage="문제",
             notes="학습을 빠르게 하려면 정답 문장 전체를 한 번에 넣어 모든 위치를 병렬로 계산하고 싶다(RNN처럼 한 칸씩 기다리지 않고). "
@@ -131,24 +130,33 @@ s = d.slide("Teacher forcing: 입력과 정답을 한 칸 어긋나게", lead="D
             notes="'I am a student'를 목표로 할 때, Decoder 입력은 [BOS, I, am, a, student], 예측 정답은 [I, am, a, student, EOS]. "
                   "학습 때 이전 예측 대신 이전 정답을 입력으로 주는 것이 teacher forcing. "
                   "입력이 'I'인 위치의 목표는 'am'이므로 현재 입력(대각선)을 보는 것은 괜찮다(개념 확인 08). 문제는 '뒤에 있는' 입력을 보는 것 → causal mask. "
-                  "BOS·EOS·PAD의 실제 이름과 ID는 tokenizer마다 다르다.")
-top, bot = s.area.top(2.9, gap=0.25)
+                  "BOS·EOS·PAD의 실제 이름과 ID는 tokenizer마다 다르다. "
+                  "왜 학습은 병렬인가: 학습에서는 모든 이전 정답 토큰이 이미 주어지므로, 위치별 입력을 한꺼번에 넣고 causal mask로 의존성을 제한해 여러 위치의 다음 토큰 예측을 한 번의 forward로 계산한다. "
+                  "미래 정답 값이 텐서 안에 '존재'하는 것과, 해당 Query가 그것을 '참조'하는 것은 다르다 — mask가 참조를 막는다. RNN은 h_t를 위해 h_(t−1)을 기다려야 했다(4주차 ③). "
+                  "생성에서는 다음 입력 토큰이 아직 정해지지 않아 자기회귀 순차성이 남는다. 둘은 모순이 아니다(개념 확인 15). "
+                  "또 층 사이에는 이전 층 출력에 대한 의존이 있으므로 '모든 계산을 한 번에 병렬화한다'고 말하지 않는다.")
+top, bot = s.area.top(2.8, gap=0.25)
 s.image(A("week6/shift.png"), top)
+L, R = bot.cols(0.5, gap=0.35)
 s.bullets(["학습 때 **이전 정답**을 입력으로 = **teacher forcing**",
-           "입력 ‘I’ 위치의 목표는 ‘am’ → 현재 입력(**대각선**)은 봐도 된다 (개념 확인 08)",
-           "문제는 **뒤쪽** 입력을 보는 것 → 다음 장의 causal mask"], bot, size=16)
+           "입력 ‘I’ 위치의 목표는 ‘am’ → 현재 입력(**대각선**)은 봐도 된다",
+           "문제는 **뒤쪽** 입력을 보는 것 → 다음 장의 causal mask"], L, size=15)
+s.callout("**왜 학습은 병렬인가** — 정답 prefix가 모두 주어지므로 shift + mask로 모든 위치를 **한 번에** 예측 (RNN처럼 기다리지 않음). "
+          "생성은 다음 입력이 **아직 없어** 순차적 — 둘은 **모순이 아니다**. 단, 층 사이의 의존은 남는다.", R, kind="key", size=14)
 
 s = d.slide("Causal mask: softmax 전에 −∞", lead="미래 칸의 점수에 −∞를 더하면 exp(−∞) = 0 — 0을 더하거나 0으로 바꾸면 막히지 않는다", stage="계산",
             notes="허용되지 않는 점수에 −∞를 더하면 softmax 후 가중치가 정확히 0. 점수를 0으로 바꾸면 exp(0) = 1이라 오히려 비중을 받는다(개념 확인 07). "
                   "5주차 4토큰 예제에 causal mask를 적용하면 Query B 행: [0.33, 0.67, 0, 0]. 원래 [0.14, 0.29, 0.29, 0.29]에서 미래(C, D) 비중이 사라지고 나머지가 재정규화된다. "
                   "실수 연산에서는 −∞ 대신 큰 음수를 쓰기도 하는데, dtype(FP16 등)과 수치 안정성을 고려해야 한다.")
 L, R = s.cols(0.5)
-s.image(A("week6/causal_mask.png"), L)
+s.image(A("week6/causal_mask.png"), Box(L.x, L.y, L.w, L.h - 0.35))
 s.formula("A = softmax( QKᵀ/√d_h + M ),  M = −∞ (미래)", Box(R.x, R.y, R.w, 0.95), size=16)
-s.table(["Query B의 행", "A", "B", "C", "D"], [["mask 없음", "0.14", "0.29", "0.29", "0.29"],
-                                            ["−∞ mask", "**0.33**", "**0.67**", "0", "0"], ["0으로 바꿈", "exp(0) = 1 → **새어 나감**", "", "", ""]],
-        Box(R.x, R.y + 1.2, R.w, 1.7), size=14, align="lcccc", highlight=[2])
-s.bullets(["mask는 **softmax 전**에", "FP16에서는 큰 음수의 **dtype** 주의"], Box(R.x, R.y + 3.1, R.w, R.h - 3.1), size=15)
+s.table(["5주차 4토큰 예제 · Query B의 행", "A", "B", "C", "D"], [["mask 없음", "0.14", "0.29", "0.29", "0.29"],
+                                                               ["−∞ mask", "**0.33**", "**0.67**", "0", "0"]],
+        Box(R.x, R.y + 1.2, R.w, 1.3), size=14, align="lcccc", highlight=[1], widths=[2.6, 1, 1, 1, 1])
+s.bullets(["미래(C, D) 비중이 사라지고 나머지가 **재정규화**된다",
+           "점수를 **0으로 바꾸면** exp(0) = 1 → 오히려 비중을 받는다 (**새어 나감**)",
+           "mask는 **softmax 전**에 · FP16에서는 큰 음수의 **dtype** 주의"], Box(R.x, R.y + 2.75, R.w, R.h - 2.75), size=15)
 
 s = d.slide("Causal · Padding · Loss mask는 서로 다르다", lead="무엇을 막고, 어디에 적용하나 — 이름이 비슷해도 역할이 다르다", stage="정리",
             notes="원자료의 표. causal mask는 미래 target 참조를 막고 Decoder self-attention 점수에 적용. source key padding mask는 source의 PAD 위치 참조를 막고 Encoder self-attention과 cross-attention에. "
@@ -157,7 +165,7 @@ s = d.slide("Causal · Padding · Loss mask는 서로 다르다", lead="무엇�
                   "주의 2: PyTorch scaled_dot_product_attention의 boolean mask에서 True는 '참조 허용', nn.MultiheadAttention의 attn_mask·key_padding_mask에서 True는 '참조 차단' — 그대로 복사하면 뜻이 뒤집힌다.")
 s.table(["mask", "무엇을 막나", "어디에 적용하나"],
         [["Causal", "미래 target 위치 참조", "Decoder self-attention 점수"], ["Source key padding", "source의 PAD 위치 참조", "Encoder self-attention · cross-attention"],
-         ["Target key padding", "target의 PAD 위치 참조", "Decoder self-attention"], ["Loss ignore", "PAD 정답을 손실에 포함", "cross-entropy · 지표 집계"]],
+         ["Target key padding", "target의 PAD 위치 참조", "Decoder self-attention"], ["Loss ignore", "PAD 정답이 손실·지표에 들어가는 것", "cross-entropy의 ignore_index · 지표 집계에서 제외"]],
         Box(s.area.x, s.area.y, s.area.w, 2.6), widths=[2.4, 3.8, 4.8], size=15)
 L, R = Box(s.area.x, s.area.y + 2.9, s.area.w, s.area.h - 2.9).cols(0.5, gap=0.4)
 s.callout("padding mask는 PAD **Query의 출력**을 0으로 만들지 않는다 → loss · pooling · 평가에서 따로 제외", L, kind="tip", size=15)
@@ -188,9 +196,6 @@ s.flow([{"head": "Decoder 출력", "body": "(B, T, d)"}, {"head": "Linear W_voca
 s.bullets(["**weight tying**: 임베딩과 출력 투영의 가중치 공유 — 조건이 맞을 때의 설계 선택",
            "logits = softmax **전** 점수 → CrossEntropyLoss에는 logits를 넣는다 (2주차)"], low, size=16)
 
-# ============================================================ Part 3
-d.part(3, "입력부터 logits까지, 파라미터 세기", "한 샘플을 끝까지 따라가면 shape은 어떻게 변하나? 파라미터는 몇 개인가?")
-
 s = d.slide("한 샘플을 끝까지 추적하기", lead="B = 2, S = 5, T = 3, d = 8, H = 2, |V| = 16 — 길이가 바뀌는 곳은 어디인가?", stage="계산",
             notes="원자료의 추적 표. source ID (2, 5) → 임베딩 + PE (2, 5, 8) → Encoder 최종 E (2, 5, 8). target 입력 ID (2, 3) (BOS 포함, 한 칸 민 입력) → (2, 3, 8). "
                   "Decoder self-attention 표 (2, 2, 3, 3) (causal mask), cross-attention 표 (2, 2, 3, 5) (source 5개 참조), Decoder 출력 (2, 3, 8), logits (2, 3, 16). "
@@ -198,9 +203,10 @@ s = d.slide("한 샘플을 끝까지 추적하기", lead="B = 2, S = 5, T = 3, d
 s.table(["단계", "shape", "메모"],
         [["source ID", "(2, 5)", "padding된 입력"], ["source 임베딩 + PE", "(2, 5, 8)", "8차원 표현"],
          ["Encoder 최종 출력 E", "(2, 5, 8)", "입력의 문맥 표현"], ["target 입력 ID", "(2, 3)", "BOS 포함, 한 칸 민 입력"],
+         ["target 임베딩 + PE", "(2, 3, 8)", "Decoder 입력 표현"],
          ["Decoder self-attention 표", "(2, 2, 3, 3)", "causal mask 적용"], ["Cross-attention 표", "(2, 2, 3, **5**)", "source 5개 위치 참조"],
          ["Decoder 최종 출력", "(2, 3, 8)", "Query 위치 수 **3** 유지"], ["logits", "(2, 3, 16)", "위치마다 16개 후보 점수"]],
-        widths=[3.4, 2.4, 4.6], size=15, align="lcl", highlight=[5])
+        widths=[3.4, 2.4, 4.6], size=15, align="lcl", highlight=[6])
 
 s = d.slide("파라미터 수를 직접 유도하기", lead="attention 4d² + FFN 2d·d_ff — d_ff = 4d면 Encoder 층 ≈ 12d², Decoder 층 ≈ 16d²", stage="계산",
             notes="bias·Norm·임베딩 제외. self-attention의 W_Q, W_K, W_V, W_O = 4d². FFN = 2·d·d_ff = 8d²(d_ff = 4d). Encoder 층 ≈ 12d², Decoder 층은 cross-attention이 더해져 ≈ 16d². "
@@ -215,8 +221,8 @@ s.table(["항목 (d = 512, d_ff = 2048)", "파라미터"], [["Encoder 층 (≈ 1
 s.bullets(["d를 2배로 → 층 파라미터 **4배** (d²)", "층 수 L을 2배로 → **2배**", "attention 가중치 A는 파라미터가 **아니다**",
            "외우지 말고 **유도**할 수 있으면 된다"], R)
 
-# ============================================================ Part 4
-d.part(4, "학습: 확률을 정답 쪽으로", "구조가 계산을 정한다면, 목표와 optimizer는 무엇을 학습할지 정한다")
+# ============================================================ Part 3
+d.part(3, "학습: 확률을 정답 쪽으로", "구조가 계산을 정한다면, 목표와 optimizer는 무엇을 학습할지 정한다")
 
 s = d.slide("다음 토큰의 음의 로그 가능도", lead="정답 토큰에 준 확률의 −log를 PAD 아닌 토큰 수로 평균 — 2주차 cross-entropy 그대로", stage="계산",
             notes="L = −(1/|valid|) Σ log p(y_t | y_<t, x). PAD가 아닌 토큰 수로 정규화한다. 예: 정답 'I am a student EOS'에 준 확률이 0.5, 0.4, 0.6, 0.7, 0.9라면 "
@@ -231,7 +237,7 @@ s.table(["정답 토큰", "I", "am", "a", "student", "EOS"], [["p(정답)", "0.5
         size=14, align="cccccc")
 s.bullets(["평균 NLL = **0.516**, perplexity = e^0.516 ≈ **1.68**"], Box(L.x, L.y + 1.5, L.w, 0.7), size=16)
 s.callout("PAD 토큰은 분모와 분자에서 **제외** — 집계 단위(토큰 평균 / 문장 평균)를 명시한다.", Box(L.x, L.y + 2.3, L.w, 1.0), kind="tip", size=15)
-s.bullets(["CrossEntropyLoss에는 **logits** (개념 확인 14)", "(B, T, |V|) → **(B·T, |V|)**", "정답 (B, T) → **(B·T)**",
+s.bullets(["CrossEntropyLoss에는 **logits** (softmax 전)", "(B, T, |V|) → **(B·T, |V|)**", "정답 (B, T) → **(B·T)**",
            "`ignore_index = PAD`", ("loss와 accuracy 양쪽에서", 1)], R)
 
 s = d.slide("한 학습 step의 순서", lead="batch → forward → masked CE → backward → step — 1주차 학습 루프 그대로", stage="코드",
@@ -254,17 +260,21 @@ s.callout("gradient clipping은 교육용 보호 장치 — 이 코드가 원논
 s.bullets(["1주차: forward → loss → backward → update", "`target_input_ids` = BOS + 정답[:-1]", "`target_labels` = 정답 + EOS",
            "clip: 기울기 **폭주** 방지 (4주차)"], R)
 
-s = d.slide("왜 학습은 병렬로 할 수 있나", lead="학습 때는 정답 prefix가 모두 주어진다 — shift + mask로 모든 위치의 다음 토큰을 한 번에 예측", stage="아이디어",
-            notes="학습에서는 모든 이전 정답 토큰이 이미 주어지므로, 위치별 입력을 한꺼번에 넣고 causal mask로 의존성을 제한해 여러 위치의 다음 토큰 예측을 한 번의 forward로 계산한다. "
-                  "미래 정답 값이 텐서 안에 '존재'하는 것과, 해당 Query가 그것을 '참조'하는 것은 다르다 — mask가 참조를 막는다. RNN은 h_t를 위해 h_(t−1)을 기다려야 했다(4주차 ③). "
-                  "생성에서는 다음 입력 토큰이 아직 정해지지 않아 자기회귀 순차성이 남는다. 둘은 모순이 아니다(개념 확인 15). "
-                  "또 층 사이에는 이전 층 출력에 대한 의존이 있으므로 '모든 계산을 한 번에 병렬화한다'고 말하지 않는다.")
-rest = s.cards([{"head": "학습 (teacher forcing)", "bullets": True,
-                 "body": ["정답 prefix가 **모두 주어짐**", "shift + causal mask로 모든 위치를 **한 번에**", "RNN처럼 한 칸씩 기다리지 않는다"]},
-                {"head": "생성 (추론)", "tone": "accent", "bullets": True,
-                 "body": ["다음 입력 토큰이 **아직 없다**", "하나 만들고 붙이고 다시 계산 — **순차적**", "→ Part 5"]}], cols=2, body_size=17, head_size=19)
-s.callout("둘은 **모순이 아니다** (개념 확인 15). 단, 층 사이의 의존은 남으므로 ‘모든 계산이 한 번에 병렬’은 아니다.",
-          Box(rest.x, rest.y + 0.1, rest.w, 0.9), kind="key", size=16)
+s = d.slide("무엇을 기록할까 — 지표와 점검 순서", lead="teacher-forced 지표와 실제 생성 성능은 다르다. loss가 안 떨어지면 작은 과적합부터", stage="검증",
+            notes="NLL(PAD·평균 단위·smoothing 여부 명시), perplexity(같은 tokenizer·데이터에서만 비교, label-smoothed loss의 exp와 섞지 않기), token accuracy(한 시퀀스의 작은 오류를 가릴 수 있음), "
+                  "exact match(시퀀스 전체 정답 비율, EOS·길이 기준 필요), 실제 생성 성능(생성한 prefix 기반 — teacher-forced 평가와 별도). "
+                  "model.eval()은 dropout 등을 평가 모드로, torch.no_grad()는 autograd 기록을 끈다 — 역할이 다르다. "
+                  "loss가 안 떨어지면: 1–4개 샘플 과적합 확인 → 데이터 정렬, target shift, mask 방향, logits shape, ignore_index, optimizer에 파라미터가 들어갔는지. 곧바로 층 수나 GPU를 늘리지 않는다.")
+L, R = s.cols(0.55, gap=0.4)
+gt = s.table(["지표", "주의"], [["NLL", "PAD · 평균 단위 · smoothing 명시"], ["Perplexity", "같은 tokenizer · 데이터에서만 비교"],
+                               ["Token accuracy", "작은 오류를 가릴 수 있다"], ["Exact match", "EOS · 길이 기준 필요"],
+                               ["생성 성능", "teacher-forced 평가와 **별도**"]], L, size=16, widths=[1.6, 3.4])
+rest = s.card(R, "loss가 안 떨어질 때", ["① 샘플 **1–4개**를 과적합시킬 수 있나?", "② 데이터 정렬 · **target shift**", "③ **mask 방향** · logits shape",
+                                      "④ ignore_index · optimizer에 파라미터 포함?", "⑤ 그 다음에 크기 · GPU"], tone="accent", bullets=False,
+              body_size=15, fit_h=True)
+cy = max(L.y + gt.height / 914400 + 0.3, rest.y if rest else 0)
+s.callout("`model.eval()` = dropout 등 평가 모드 · `torch.no_grad()` = autograd 기록 끄기 — **역할이 다르다**",
+          Box(s.area.x, cy, s.area.w, 0.9), kind="tip", size=15)
 
 s = d.slide("원논문의 학습 조건", lead="Adam(β1 0.9, β2 0.98) · warm-up 4000 후 감소 · dropout 0.1 · label smoothing 0.1", stage="역사",
             notes="Vaswani et al. §5. 학습률 lrate = d^−0.5 · min(step^−0.5, step · warmup^−1.5): 처음 4000 step은 선형 증가, 이후 step^−1/2로 감소. d = 512면 최고점 약 7.0 × 10^−4. "
@@ -277,22 +287,8 @@ s.table(["항목", "원논문 (base / big)"], [["Optimizer", "Adam β1 0.9, β2 
                                         ["규제", "dropout 0.1 · label smoothing 0.1"], ["하드웨어", "P100 × 8 · base 약 12시간 · big 약 3.5일"],
                                         ["결과 (BLEU)", "영→독 27.3 / 28.4 · 영→프 41.8 (big)"]], R, size=14, widths=[1.4, 3.6])
 
-s = d.slide("무엇을 기록할까 — 지표와 점검 순서", lead="teacher-forced 지표와 실제 생성 성능은 다르다. loss가 안 떨어지면 작은 과적합부터", stage="검증",
-            notes="NLL(PAD·평균 단위·smoothing 여부 명시), perplexity(같은 tokenizer·데이터에서만 비교, label-smoothed loss의 exp와 섞지 않기), token accuracy(한 시퀀스의 작은 오류를 가릴 수 있음), "
-                  "exact match(시퀀스 전체 정답 비율, EOS·길이 기준 필요), 실제 생성 성능(생성한 prefix 기반 — teacher-forced 평가와 별도). "
-                  "model.eval()은 dropout 등을 평가 모드로, torch.no_grad()는 autograd 기록을 끈다 — 역할이 다르다. "
-                  "loss가 안 떨어지면: 1–4개 샘플 과적합 확인 → 데이터 정렬, target shift, mask 방향, logits shape, ignore_index, optimizer에 파라미터가 들어갔는지. 곧바로 층 수나 GPU를 늘리지 않는다.")
-L, R = s.cols(0.55, gap=0.4)
-s.table(["지표", "주의"], [["NLL", "PAD · 평균 단위 · smoothing 명시"], ["Perplexity", "같은 tokenizer · 데이터에서만 비교"],
-                          ["Token accuracy", "작은 오류를 가릴 수 있다"], ["Exact match", "EOS · 길이 기준 필요"],
-                          ["생성 성능", "teacher-forced 평가와 **별도**"]], L, size=14, widths=[1.6, 3.4])
-s.card(R, "loss가 안 떨어질 때", ["① 샘플 **1–4개**를 과적합시킬 수 있나?", "② 데이터 정렬 · **target shift**", "③ **mask 방향** · logits shape",
-                               "④ ignore_index · optimizer에 파라미터 포함?", "⑤ 그 다음에 크기 · GPU"], tone="accent", bullets=False, body_size=15, fit_h=True)
-s.callout("`model.eval()` = dropout 등 평가 모드 · `torch.no_grad()` = autograd 기록 끄기 — **역할이 다르다**",
-          Box(s.area.x, s.area.b - 0.9, s.area.w, 0.9), kind="tip", size=15)
-
-# ============================================================ Part 5
-d.part(5, "생성과 비용: KV Cache · 연산량 · 메모리", "학습 때의 정답 prefix가 없다 — 토큰을 하나씩 만들면 무엇이 반복되나?")
+# ============================================================ Part 4
+d.part(4, "생성과 비용: KV Cache · 연산량 · 메모리", "학습 때의 정답 prefix가 없다 — 토큰을 하나씩 만들면 무엇이 반복되나?")
 
 s = d.slide("자기회귀 생성: 토큰을 하나씩", lead="source는 한 번 인코딩, BOS에서 시작해 마지막 위치의 logits로 다음 토큰을 고르고 붙이기를 반복",
             stage="아이디어",
@@ -315,7 +311,7 @@ s = d.slide("토큰 선택은 모델과 별도의 정책", lead="같은 모델, 
 s.table(["정책", "방법", "특징"], [["Greedy", "가장 높은 점수의 토큰", "단순, 전체 최적은 **보장 안 됨**"], ["Sampling", "분포에서 표본 추출", "다양하지만 매번 다르다"],
                                   ["Temperature τ", "softmax(logits / τ) 후 선택", "분포의 뾰족함 조절 (2주차) — **재학습 아님**"],
                                   ["Top-k · Top-p", "상위 후보만 남기고 샘플링", "엉뚱한 저확률 토큰 방지"],
-                                  ["Beam search", "여러 후보 prefix 유지", "계산 증가 · 길이 정규화 영향 (원논문: beam 4, α 0.6)"]],
+                                  ["Beam search", "여러 후보 prefix 유지", "계산 증가 · 길이 정규화 영향 (beam 4, 길이 페널티 α = 0.6)"]],
         Box(s.area.x, s.area.y, s.area.w, 3.4), widths=[2.0, 3.8, 5.0], size=15)
 s.callout("정책은 출력 분포를 **사용하는 방식**이지 Q/K/V 가중치를 바꾸는 학습이 아니다. 비교 전에 과제의 평가 목표부터 정한다.",
           Box(s.area.x, s.area.y + 3.65, s.area.w, 0.9), kind="tip", size=16)
@@ -357,8 +353,8 @@ s.image(A("week6/kv_memory.png"), L)
 s.bullets(["예: L 32, d 4096, N 4096, FP16 → **2 GiB**", "**GQA**: KV head 공유 → cache 감소", "FlashAttention: 표를 저장하지 않고 **정확히** 계산",
            ("산술량이 선형이 되는 것은 아님", 1), "측정: batch · dtype · 길이 · device · warm-up **통제**", ("이론 MACs ≠ 실측 지연", 1)], R, size=15)
 
-# ============================================================ Part 6
-d.part(6, "직접 실험하기", "구조가 왜 필요한지, 어떤 증거로 보일 수 있을까?")
+# ============================================================ Part 5
+d.part(5, "직접 실험하기", "구조가 왜 필요한지, 어떤 증거로 보일 수 있을까?")
 
 s = d.slide("작은 Transformer 실습: 아홉 가지 검사", lead="수열 뒤집기 [3, 7, 5] → [5, 7, 3, EOS] — 학습 전에 구조부터 검증한다", stage="실습",
             notes="원자료의 transformer_lab.py: 명시적 Q/K/V, causal·padding mask, Post-LN, sinusoidal 위치, cross-attention, loss, greedy 생성을 포함한 교육용 Encoder–Decoder. "
@@ -388,7 +384,7 @@ s = d.slide("첫 결과를 해석하는 법", lead="400 step에서 손실은 내
 s.table(["평가 길이", "Raw NLL", "teacher-forced 토큰 정확도", "greedy exact match"],
         [["3–8 (훈련 범위)", "1.045", "56.8%", "6.9% (5 / 72)"], ["9–12 (더 긴 입력)", "1.764", "33.8%", "**0%** (0 / 72)"]],
         Box(s.area.x, s.area.y, s.area.w, 1.5), widths=[2.6, 1.6, 3.4, 3.2], size=16, align="lccc")
-s.cards([{"head": "읽는 법 ①", "body": ["훈련 NLL 2.90 → 1.23으로 **내려갔지만**", "완전한 수열 생성은 **아직**"]},
+s.cards([{"head": "읽는 법 ①", "body": ["훈련 batch NLL 2.90 → 1.23, 평가(3–8) NLL 1.045로 **내려갔지만**", "완전한 수열 생성은 **아직**"]},
          {"head": "읽는 법 ②", "body": ["토큰 정확도와 **exact match**는 다르다", "생성은 오류가 **누적**된다"]},
          {"head": "읽는 법 ③", "tone": "accent", "body": ["긴 입력에서 떨어져도 **구현 오류로 단정 X**", "학습 분포 밖 — 단일 실행 · 400 step"]}],
         Box(s.area.x, s.area.y + 1.8, s.area.w, s.area.h - 1.8), cols=3, body_size=16, head_size=17)
@@ -412,9 +408,8 @@ s = d.slide("실험 기록과 최종 프로젝트", lead="작은 과제 · 최�
                   "예상과 다른 결과라도 조건과 설명을 정확히 정리했다면 좋은 연구 연습이다.")
 s.cards([{"head": "작은 과제", "bullets": True, "body": ["복사: output = input", "반전: 순서 뒤집기", "기호 치환: 정해진 매핑"]},
          {"head": "최소 기록 필드", "bullets": True, "body": ["run_id · commit · seed · task", "구조 · mask · norm 위치", "NLL · 정확도 · exact match · 지연 · 메모리"]},
-         {"head": "네 가지 그림", "bullets": True, "body": ["길이 – 정확도", "step – loss", "품질 – 지연 · 길이 – 메모리"]},
-         {"head": "최종 프로젝트 배점 (제안)", "tone": "accent", "bullets": True,
-          "body": ["가설 20 · **구현 정확성 30**", "실험 25 · 해석과 한계 15", "설명 발표 10"]}], cols=4, body_size=14, head_size=16)
+         {"head": "네 가지 그림", "tone": "accent", "bullets": True, "body": ["길이 – 정확도", "step – loss", "품질 – 지연 · 길이 – 메모리"]}],
+        cols=3, body_size=15, head_size=17)
 s.area = Box(s.area.x, s.area.y + 2.75, s.area.w, s.area.h - 2.75)
 s.callout("성공 기준: 예상과 다른 결과라도 **조건과 가능한 설명을 정확히** 정리했다면 좋은 연구 연습이다. "
           "정해 둔 결론에 맞춰 데이터나 조건을 숨기지 않는다. 측정하지 않은 값을 추정치처럼 채우지 않는다.",
@@ -422,8 +417,8 @@ s.callout("성공 기준: 예상과 다른 결과라도 **조건과 가능한 �
 s.callout("최종 발표의 세 질문: ① 어느 가정에서만 결론이 성립하나? ② 차이가 파라미터 수·학습량 때문일 가능성은? ③ 모델이 실패한 입력 하나를 보여 줄 수 있나?",
           Box(s.area.x, s.area.y + 1.35, s.area.w, 1.0), kind="tip", size=15)
 
-# ============================================================ Part 7
-d.part(7, "Transformer 이후, 그리고 과정 마무리", "원형에서 무엇을 유지하고, 무엇을 바꾸었나? — 그리고 여섯 질문을 다시 본다")
+# ============================================================ Part 6
+d.part(6, "Transformer 이후, 그리고 과정 마무리", "원형에서 무엇을 유지하고, 무엇을 바꾸었나? — 그리고 여섯 질문을 다시 본다")
 
 s = d.slide("세 가지 조립 방식", lead="Encoder-only · Decoder-only · Encoder–Decoder — 반쪽을 떼는 것이 아니라 mask · 목표 · head가 함께 달라진다",
             stage="정리",
@@ -443,7 +438,7 @@ s = d.slide("ViT와 DiT: 무엇을 token이라 부를까", lead="이미지 patch
                   "CLS 사용·위치 임베딩·pooling은 모델마다 다르다. 3주차 CNN의 구조적 가정(지역성) 없이도 대규모 데이터에서는 잘 작동한다. "
                   "DiT(Peebles & Xie, 2022/2023): diffusion 모델에서 noisy latent patch와 timestep, 조건을 받아 denoising에 필요한 값을 예측하는 Transformer. 토큰 생성 루프와 다른 계산. "
                   "원형 DiT는 class conditioning을 다룬다 — 모든 DiT가 텍스트 조건 모델은 아니다.")
-L, R = s.cols(0.55)
+L, R = s.cols(0.62)
 s.image(A("week6/vit_patch.png"), L)
 rest = s.card(R, "ViT (2020)", ["224×224 → 16×16 patch **196개**", "patch 하나 = 768개 값 → **d차원 투영**", "CNN의 지역성 가정 없이 대규모 데이터로"],
               bullets=True, fit_h=True)
@@ -468,7 +463,7 @@ s = d.slide("여섯 질문으로 다시 보기", lead="1943 → 2017 → 이후:
                   "W4 먼 정보를 기억하려면? → RNN·LSTM·Seq2Seq. W5 원문을 다시 보면? → Attention·Q/K/V·Multi-head. W6 참조만으로 만들면? → Transformer. "
                   "그리고 Transformer 안에는 이 모든 답이 들어 있다: 텐서·학습 루프(W1), MLP=FFN·softmax·CE(W2), Residual·LayerNorm(W3), 임베딩·Encoder–Decoder(W4), attention(W5). "
                   "원자료 주의: 계보는 교육적 연결이며, 각 모델이 이전 모델을 완전히 대체했다는 주장이 아니다.")
-top, bot = s.area.top(2.4, gap=0.3)
+top, bot = s.area.top(2.8, gap=0.3)
 s.image(A("week6/genealogy.png"), top)
 s.table(["Transformer 안의 부품", "처음 배운 곳"], [["텐서 · 손실 · 경사하강 · 학습 루프", "Week 1"], ["FFN(=MLP) · 역전파 · softmax + cross-entropy", "Week 2"],
                                                ["Residual · LayerNorm", "Week 3"], ["임베딩 · 다음 토큰 확률 · Encoder–Decoder", "Week 4"],
@@ -485,7 +480,7 @@ s.flow([{"head": "ID", "body": "(B, S)"}, {"head": "임베딩 + PE", "body": "(B
         {"head": "다음 토큰", "body": "선택 정책", "tone": "dark"}], top, body_size=13, head_size=15, gap=0.3)
 L, R = bot.cols(0.5, gap=0.4)
 s.card(L, "각 구간에 적을 것", ["입력 · 출력 **shape**", "학습되는 **파라미터**", "정보가 이동하는 **방향**", "**mask**가 막는 연결"], bullets=True)
-s.card(R, "구술 평가 (원자료)", ["처음 보는 d, H, S, T로 입력 → logits 추적", "하나를 바꾸면? 위치 정보 제거 / 잘못된 mask / KV Cache 추가",
+s.card(R, "구술 평가", ["처음 보는 d, H, S, T로 입력 → logits 추적", "하나를 바꾸면? 위치 정보 제거 / 잘못된 mask / KV Cache 추가",
                               "“이 head는 주어를 이해한다” → “특정 위치에 높은 가중치가 **관찰**되었다”"], tone="accent", bullets=True)
 
 # ============================================================ 마무리
@@ -496,15 +491,15 @@ d.summary(["층 = attention(위치 간 결합) + **FFN**(위치별 변환), 각�
            "생성은 **자기회귀**: KV Cache가 과거 K·V 재계산을 줄이지만 루프는 남는다",
            "구조의 필요성은 **통제된 실험**으로 — 계보는 여섯 질문과 그 답의 연결"])
 
-d.quiz("셀프 체크 ①", [("Causal mask에서 미래 점수를 0으로만 바꾸면? (개념 확인 07)", "exp(0) = 1이므로 차단되지 않는다 — softmax 전에 −∞로 처리해야 한다"),
-                     ("정답을 한 칸 이동시킨 Decoder에서 대각선 참조는? (08)", "허용할 수 있다 — 현재 입력은 다음 정답보다 한 칸 앞이다"),
-                     ("FFN은 어떤 계산인가? (11)", "각 토큰 위치의 특징에 적용하는 비선형 변환 — 위치 간 결합은 하지 않는다"),
-                     ("LayerNorm(d)의 전형적인 정규화 범위는? (12)", "각 토큰의 d개 특징 (batch 전체가 아니다)")])
-
-d.quiz("셀프 체크 ②", [("CrossEntropyLoss에 일반적으로 전달하는 값은? (14)", "정규화 전 logits (softmax를 두 번 하지 않는다)"),
-                     ("Transformer의 병렬 학습과 자기회귀 생성은 모순인가? (15)", "아니다 — 학습은 정답 prefix가 주어져 병렬, 생성은 다음 입력이 없어 순차"),
-                     ("N을 2배로, d를 고정하면 주요 항은? (16)", "attention 곱셈 항(N²d)은 4배, 투영·FFN 항(Nd²)은 2배"),
-                     ("KV Cache가 하는 일은? (17)", "과거 위치의 K/V 재계산을 줄인다 — 생성 루프와 새 Query의 과거 참조 비용은 남는다")])
+d.quiz("셀프 체크", [("Causal mask에서 미래 점수를 0으로만 바꾸면?", "exp(0) = 1이므로 차단되지 않는다 — softmax 전에 −∞로 처리해야 한다"),
+                   ("FFN은 어떤 계산인가?", "각 토큰 위치의 특징에 적용하는 비선형 변환 — 위치 간 결합은 하지 않는다"),
+                   ("LayerNorm(d)의 전형적인 정규화 범위는?", "각 토큰의 d개 특징 (batch 전체가 아니다)"),
+                   ("CrossEntropyLoss에 일반적으로 전달하는 값은?", "정규화 전 logits (softmax를 두 번 하지 않는다)"),
+                   ("N을 2배로, d를 고정하면 주요 항은?", "attention 곱셈 항(N²d)은 4배, 투영·FFN 항(Nd²)은 2배"),
+                   ("KV Cache가 하는 일은?", "과거 위치의 K/V 재계산을 줄인다 — 생성 루프와 새 Query의 과거 참조 비용은 남는다")],
+       notes="원자료 개념 확인 07, 11, 12, 14, 16, 17. 시간이 있으면 추가 질문: "
+             "(개념 확인 08) 정답을 한 칸 이동시킨 Decoder에서 대각선 참조는? → 허용할 수 있다 — 현재 입력은 다음 정답보다 한 칸 앞이다. "
+             "(개념 확인 15) Transformer의 병렬 학습과 자기회귀 생성은 모순인가? → 아니다 — 학습은 정답 prefix가 주어져 병렬, 생성은 다음 입력이 없어 순차.")
 
 d.misconceptions([["“FFN은 다른 토큰을 다시 섞는다”", "FFN은 각 위치의 특징을 **독립적으로** 변환한다"],
                   ["“미래 점수를 0으로 만들면 mask가 된다”", "softmax 전에 **−∞** — exp(0) = 1"],
@@ -515,9 +510,11 @@ d.misconceptions([["“FFN은 다른 토큰을 다시 섞는다”", "FFN은 각
                   ["“Attention heatmap은 모델의 생각을 증명한다”", "**관찰** 자료 — 인과 설명은 별도 검증"]],
                  notes="원자료 오개념 12, 15–20과 실무 경고 신호: 너무 빨리 낮아지는 loss, PAD를 맞히는 높은 정확도, EOS 없이 계속되는 생성, batch를 바꾸자 크게 달라지는 결과.")
 
-d.homework([("mask 오류 실험 (원자료 운영안 9회차)", "causal mask를 일부러 제거하고 학습 — 훈련 loss와 실제 greedy 생성 결과의 괴리를 기록한다."),
+d.homework([("mask 오류 실험", "causal mask를 일부러 제거하고 학습 — 훈련 loss와 실제 greedy 생성 결과의 괴리를 기록한다."),
             ("실습 검사 통과", "transformer_lab.py의 아홉 검사를 실행하고, 각 검사가 어떤 성질을 확인하는지 한 줄씩 설명한다."),
-            ("Ablation 보고서 (10회차)", "위치 정보 제거 또는 head 수 변경 하나를 골라 통제 조건 · seed 3개 · 네 그림 중 둘을 포함해 보고한다.")])
+            ("Ablation 보고서", "위치 정보 제거 또는 head 수 변경 하나를 골라 통제 조건 · seed 3개 · 네 그림 중 둘을 포함해 보고한다.")],
+           notes="원자료 운영안 9회차(mask 오류 실험)·10회차(ablation 보고서). 최종 프로젝트 배점(제안): 문제와 가설 20, 구현 정확성 30, "
+                 "실험 설계와 결과 25, 해석과 한계 15, 설명 발표 10.")
 
 d.references([["[22] Vaswani et al. (2017). Attention Is All You Need", "Fig.1 · §3 구조 · §4 비용 · §5 학습 · §6.2 변형 실험"],
               ["[15] Seq2Seq → [17] Bahdanau → [22] Transformer → [19][20] ResNet · LayerNorm", "원자료 권장 읽기 순서"],

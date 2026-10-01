@@ -58,7 +58,7 @@ def fig_ln_axis():
         ax.text(d / 2, -0.55, "특징 축 d →", ha="center", fontsize=11, color=DARK)
         ax.text(-0.35, N / 2, "토큰 N", rotation=90, ha="center", va="center", fontsize=11, color=DARK)
         ax.text(d + 0.95, N + 0.35, "배치 B\n(겹친 장)", ha="center", fontsize=10, color=GRAY)
-        title = "LayerNorm(d): 토큰 하나의 d개 특징" if k == 0 else "BatchNorm 식: 배치 B를 가로지르는 한 특징"
+        title = "LayerNorm(d): 토큰 하나의 d개 특징" if k == 0 else "BatchNorm: 배치 B를 가로지르는 한 특징"
         ax.set_title(title, fontsize=12, color=ACC if k == 0 else GRAY, fontweight="bold")
     fig.tight_layout()
     save(fig, "ln_axis.png")
@@ -134,7 +134,7 @@ def fig_shift():
 def fig_causal():
     toks = ["BOS", "I", "am", "a", "student"]
     n = 5
-    fig, ax = plt.subplots(figsize=(4.8, 4.6))
+    fig, ax = plt.subplots(figsize=(5.0, 4.2))
     for i in range(n):
         for j in range(n):
             allowed = j <= i
@@ -152,12 +152,12 @@ def fig_causal():
     ax.set_xlim(0, n)
     ax.set_ylim(0, n)
     ax.set_xticks(np.arange(n) + 0.5)
-    ax.set_xticklabels(toks, fontsize=11)
+    ax.set_xticklabels(toks, fontsize=10.5)
     ax.xaxis.tick_top()
     ax.set_yticks(np.arange(n) + 0.5)
     ax.set_yticklabels([f"{t} → {o}" for t, o in zip(toks, ["I", "am", "a", "student", "EOS"])][::-1],
                        fontsize=10.5)
-    ax.set_xlabel("Key: 참조할 Decoder 입력 위치 j", fontsize=11, color=DARK)
+    ax.set_xlabel("Key: 참조할 Decoder 입력 위치 j", fontsize=11, color=DARK, labelpad=10)
     ax.xaxis.set_label_position("top")
     ax.set_ylabel("Query 위치 i (입력 → 예측할 정답)", fontsize=11, color=DARK)
     ax.tick_params(length=0)
@@ -238,8 +238,8 @@ def fig_lr():
     ax.set_ylabel("학습률 η (×1e-4)", fontsize=11)
     ax.set_xlim(0, 100000)
     ax.set_ylim(0, 7.8)
-    ax.set_xticks([0, 4000, 25000, 50000, 75000, 100000])
-    ax.set_xticklabels(["0", "4k", "25k", "50k", "75k", "100k"])
+    ax.set_xticks([4000, 25000, 50000, 75000, 100000])
+    ax.set_xticklabels(["4k", "25k", "50k", "75k", "100k"])
     ax.grid(axis="y", color="#E8EEF1", lw=0.8)
     for sp in ("top", "right"):
         ax.spines[sp].set_visible(False)
@@ -249,42 +249,40 @@ def fig_lr():
 
 # ------------------------------------------------------------------ 7. KV cache prefill/decode
 def fig_kv():
-    fig, ax = plt.subplots(figsize=(7.8, 4.6))
+    fig, ax = plt.subplots(figsize=(7.8, 4.2))
     ax.set_xlim(0, 12)
-    ax.set_ylim(0, 7)
+    ax.set_ylim(1.0, 7)
     ax.axis("off")
     # prefill
-    ax.text(0.2, 6.6, "① Prefill: 주어진 prefix 전체를 한 번에 처리", fontsize=12, fontweight="bold", color=TEAL)
+    ax.text(0.2, 6.6, "① Prefill: 주어진 prefix 전체를 한 번에 처리", fontsize=13, fontweight="bold", color=TEAL)
     toks = ["BOS", "I", "am"]
     for j, t in enumerate(toks):
-        blk(ax, 0.3 + j * 1.1, 5.2, 1.0, 0.6, t, fc=MINT, ec=TEAL, fs=11, bold=True)
-        blk(ax, 0.3 + j * 1.1, 4.3, 1.0, 0.55, "K,V", fc=MINT2, ec=TEAL, fs=10)
+        blk(ax, 0.3 + j * 1.1, 5.2, 1.0, 0.6, t, fc=MINT, ec=TEAL, fs=12, bold=True)
+        blk(ax, 0.3 + j * 1.1, 4.3, 1.0, 0.55, "K,V", fc=MINT2, ec=TEAL, fs=11.5)
         arr(ax, 0.8 + j * 1.1, 5.2, 0.8 + j * 1.1, 4.85, lw=1.1)
-    ax.text(3.75, 4.57, "→ 층마다 저장", fontsize=10, color=TEAL, va="center")
-    ax.text(0.3, 3.75, "TTFT(첫 토큰까지 시간)를 좌우", fontsize=10, color=GRAY)
+    ax.text(3.7, 4.57, "→ 층마다\n   저장", fontsize=11, color=TEAL, va="center", linespacing=1.1)
+    ax.text(0.3, 3.75, "TTFT(첫 토큰까지 시간)를 좌우", fontsize=11.5, color=GRAY)
     # cache store
-    ax.add_patch(FancyBboxPatch((5.6, 3.9), 6.1, 1.2, boxstyle="round,pad=0.05,rounding_size=0.15",
+    ax.add_patch(FancyBboxPatch((5.9, 3.9), 5.9, 1.2, boxstyle="round,pad=0.05,rounding_size=0.15",
                                 fc=ACC_BG, ec=ACC, lw=1.6))
-    ax.text(5.75, 4.83, "KV Cache (층 ℓ = 1..L 각각)", fontsize=10.5, color=ACC, fontweight="bold")
+    ax.text(6.05, 4.83, "KV Cache (층 ℓ = 1..L 각각)", fontsize=11.5, color=ACC, fontweight="bold")
     for j in range(5):
         fc = MINT2 if j < 3 else ("white" if j == 4 else "#F7D9C2")
-        blk(ax, 5.8 + j * 1.15, 4.0, 1.0, 0.55, ["K1,V1", "K2,V2", "K3,V3", "K4,V4", "…"][j], fc=fc,
-            ec=ACC if j == 3 else TEAL, fs=10)
+        blk(ax, 6.05 + j * 1.12, 4.0, 1.0, 0.55, ["K1,V1", "K2,V2", "K3,V3", "K4,V4", "…"][j], fc=fc,
+            ec=ACC if j == 3 else TEAL, fs=11)
     # decode
-    ax.text(0.2, 2.9, "② Decode: 새 토큰 하나씩 (반복)", fontsize=12, fontweight="bold", color=ACC)
-    blk(ax, 0.3, 1.45, 1.4, 0.7, "새 토큰\n'a'", fc=ACC_BG, ec=ACC, fs=10.5, bold=True)
+    ax.text(0.2, 3.0, "② Decode: 새 토큰 하나씩 반복", fontsize=13, fontweight="bold", color=ACC)
+    blk(ax, 0.3, 1.45, 1.4, 0.7, "새 토큰\n'a'", fc=ACC_BG, ec=ACC, fs=11.5, bold=True)
     arr(ax, 1.7, 1.8, 2.4, 1.8)
-    blk(ax, 2.45, 1.45, 1.8, 0.7, "q4, k4, v4만\n새로 계산", fc="white", ec=ACC, fs=10)
+    blk(ax, 2.45, 1.45, 1.8, 0.7, "q4, k4, v4만\n새로 계산", fc="white", ec=ACC, fs=11)
     arr(ax, 4.25, 1.8, 5.1, 1.8)
-    blk(ax, 5.15, 1.3, 3.2, 1.0, "q4 · [K1 … K4]^T\n→ softmax → V 가중합", fc=MINT, ec=TEAL, fs=10.5)
+    blk(ax, 5.15, 1.3, 3.2, 1.0, "q4 · [K1 … K4]^T\n→ softmax → V 가중합", fc=MINT, ec=TEAL, fs=11.5)
     arr(ax, 8.35, 1.8, 9.0, 1.8)
-    blk(ax, 9.05, 1.45, 2.6, 0.7, "logits → 다음 토큰", fc=TEAL, ec=TEAL, tc="white", fs=10.5, bold=True)
-    arr(ax, 3.35, 2.15, 9.0, 4.0, c=ACC, lw=1.4, rad=-0.15)
-    ax.text(5.7, 3.3, "k4, v4 추가", fontsize=9.5, color=ACC)
+    blk(ax, 9.05, 1.45, 2.6, 0.7, "logits → 다음 토큰", fc=TEAL, ec=TEAL, tc="white", fs=11.5, bold=True)
+    arr(ax, 4.0, 2.15, 9.2, 4.0, c=ACC, lw=1.4, rad=-0.15)
+    ax.text(9.35, 3.45, "k4, v4 추가", fontsize=11, color=ACC, ha="left", va="center")
     arr(ax, 7.2, 3.95, 6.9, 2.35, c=TEAL, lw=1.4)
-    ax.text(7.3, 2.95, "과거 K,V 재사용", fontsize=9.5, color=TEAL)
-    ax.text(0.3, 0.55, "Q는 캐시하지 않음 · 새 Query가 늘어난 과거 Key를 모두 참조 → 생성 루프(순차성)는 남는다 · "
-            "token당 지연을 좌우", fontsize=9.5, color=GRAY)
+    ax.text(7.3, 2.95, "과거 K,V 재사용", fontsize=11, color=TEAL)
     save(fig, "kv_cache.png")
 
 
@@ -383,7 +381,7 @@ def fig_archs():
 
 # ------------------------------------------------------------------ 11. ViT patch
 def fig_vit():
-    fig = plt.figure(figsize=(7.6, 3.6))
+    fig = plt.figure(figsize=(8.4, 4.0))
     ax = fig.add_axes([0.0, 0.08, 0.36, 0.84])
     yy, xx = np.mgrid[0:224, 0:224]
     img = np.stack([0.55 + 0.35 * np.sin(xx / 30.0), 0.7 + 0.25 * np.cos(yy / 26.0),
@@ -397,23 +395,23 @@ def fig_vit():
     ax.add_patch(Rectangle((0, 0), 16, 16, fill=False, ec=ACC, lw=2.5))
     ax.set_xticks([0, 224])
     ax.set_yticks([0, 224])
-    ax.tick_params(labelsize=9)
-    ax.set_title("224×224 이미지 → 16×16 patch", fontsize=11, color=DARK)
+    ax.tick_params(labelsize=11)
+    ax.set_title("224×224 이미지 → 16×16 patch", fontsize=13, color=DARK)
     ax2 = fig.add_axes([0.40, 0.0, 0.6, 1.0])
     ax2.set_xlim(0, 10)
     ax2.set_ylim(0, 6)
     ax2.axis("off")
-    ax2.text(0.2, 5.3, "14 × 14 = 196개 patch", fontsize=12, fontweight="bold", color=TEAL)
-    ax2.text(0.2, 4.7, "각 patch(16·16·3=768값) → 선형 투영 → d차원 token", fontsize=10, color=DARK)
+    ax2.text(0.2, 5.3, "14 × 14 = 196개 patch", fontsize=14, fontweight="bold", color=TEAL)
+    ax2.text(0.2, 4.65, "patch 하나(16·16·3 = 768값) → 선형 투영 → d차원 token", fontsize=12, color=DARK)
     labels = ["CLS*", "p1", "p2", "p3", "…", "p196"]
     for i, t in enumerate(labels):
         fc = ACC_BG if i == 0 else MINT
-        blk(ax2, 0.2 + i * 1.6, 3.1, 1.35, 0.8, t, fc=fc, ec=ACC if i == 0 else TEAL, fs=11, bold=True)
-        blk(ax2, 0.2 + i * 1.6, 2.2, 1.35, 0.55, "+ pos", fc="white", ec=LINE, fs=9.5)
+        blk(ax2, 0.2 + i * 1.6, 3.1, 1.35, 0.8, t, fc=fc, ec=ACC if i == 0 else TEAL, fs=13, bold=True)
+        blk(ax2, 0.2 + i * 1.6, 2.2, 1.35, 0.55, "+ pos", fc="white", ec=LINE, fs=11.5)
     arr(ax2, 5.0, 2.1, 5.0, 1.55)
-    blk(ax2, 1.2, 0.7, 7.6, 0.8, "Transformer Encoder (self-attention + FFN) × L", fc=TEAL, ec=TEAL,
-        tc="white", fs=11, bold=True)
-    ax2.text(0.2, 0.1, "* CLS·pooling·위치 임베딩 방식은 모델마다 다름", fontsize=9, color=GRAY)
+    blk(ax2, 1.0, 0.7, 8.0, 0.8, "Transformer Encoder (self-attention + FFN) × L", fc=TEAL, ec=TEAL,
+        tc="white", fs=12.5, bold=True)
+    ax2.text(0.2, 0.1, "* CLS · pooling · 위치 임베딩 방식은 모델마다 다름", fontsize=11, color=GRAY)
     save(fig, "vit_patch.png")
 
 
@@ -425,22 +423,22 @@ def fig_genealogy():
           (2017, "Transformer"), (2018, "BERT·GPT"), (2020, "ViT·Pre-LN\n분석"), (2022, "FlashAttn·\nDiT"),
           (2023, "GQA")]
     xs = np.arange(len(ev))
-    fig, ax = plt.subplots(figsize=(12.0, 4.0))
+    fig, ax = plt.subplots(figsize=(14.5, 4.4))
     ax.set_xlim(-0.7, len(ev) - 0.3)
-    ax.set_ylim(-2.95, 2.6)
+    ax.set_ylim(-3.0, 2.7)
     ax.axis("off")
     ax.plot([-0.5, len(ev) - 0.5], [0, 0], color=LINE, lw=3, zorder=1)
     for i, (y, t) in enumerate(ev):
         after = y > 2017
         col = ACC if y == 2017 else (GRAY if after else TEAL)
-        ax.plot(i, 0, "o", ms=13 if y == 2017 else 10, color=col, mec="white", mew=2, zorder=3)
+        ax.plot(i, 0, "o", ms=14 if y == 2017 else 11, color=col, mec="white", mew=2, zorder=3)
         up = i % 2 == 0
-        ax.text(i, 0.45 if up else -0.45, str(y), ha="center", va="bottom" if up else "top", fontsize=11.5,
+        ax.text(i, 0.4 if up else -0.4, str(y), ha="center", va="bottom" if up else "top", fontsize=15,
                 fontweight="bold", color=col)
-        ax.text(i, 0.95 if up else -0.95, t, ha="center", va="bottom" if up else "top", fontsize=9.8,
-                color=DARK)
-    ax.fill_between([11.5, len(ev) - 0.3], -1.75, 2.6, color="#F3F6F8", zorder=0)
-    ax.text(13.5, 2.35, "2017 이후 (확장 학습)", ha="center", fontsize=11, color=GRAY, fontweight="bold")
+        ax.text(i, 0.98 if up else -0.98, t, ha="center", va="bottom" if up else "top", fontsize=12.5,
+                color=DARK, linespacing=1.15)
+    ax.fill_between([11.5, len(ev) - 0.3], -1.85, 2.7, color="#F3F6F8", zorder=0)
+    ax.text(13.5, 2.4, "2017 이후 (확장 학습)", ha="center", fontsize=13, color=GRAY, fontweight="bold")
     qs = [("1주", "배울 수 있을까?", 0, 1.4), ("2주", "직선으로 안 되면?", 1, 2.4),
           ("3주", "공간 구조는?", 3, 3.4), ("4주", "순서·먼 기억은?", 4, 8.4),
           ("5주", "원문을 다시 보면?", 8, 11.4), ("6주", "참조만으로 만들면?", 11, 15.4)]
@@ -449,13 +447,13 @@ def fig_genealogy():
         a0 = -0.6 + k * span
         col = ACC if k == 5 else TEAL
         bw = span - 0.45
-        ax.add_patch(FancyBboxPatch((a0 + 0.08, -2.9), bw, 0.95,
+        ax.add_patch(FancyBboxPatch((a0 + 0.08, -2.95), bw, 1.0,
                                     boxstyle="round,pad=0.02,rounding_size=0.12", fc=ACC_BG if k == 5 else MINT,
                                     ec=col, lw=1.2))
-        ax.text(a0 + 0.08 + bw / 2, -2.42, f"{w}\n{q}", ha="center", va="center", fontsize=10.5,
-                color=col, fontweight="bold", linespacing=1.4)
+        ax.text(a0 + 0.08 + bw / 2, -2.45, f"{w}\n{q}", ha="center", va="center", fontsize=13,
+                color=col, fontweight="bold", linespacing=1.35)
         if k < 5:
-            arr(ax, a0 + 0.1 + bw, -2.42, a0 + span + 0.06, -2.42, c=GRAY, lw=1.2)
+            arr(ax, a0 + 0.1 + bw, -2.45, a0 + span + 0.06, -2.45, c=GRAY, lw=1.2)
     save(fig, "genealogy.png")
 
 
