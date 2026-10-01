@@ -111,25 +111,25 @@ def fig_bottleneck():
         rbox(ax, x, 4.6, 0.9, 0.8, f"$s_{t+1}$", fc=MINT2, fs=14, bold=True, color=TEAL)
         ax.text(x + .45, 5.75, w, ha="center", fontsize=12, color=DARK)
         arr(ax, 4.2, 3.65, x + .1, 4.6, color=ACC, lw=1.4, ms=10)
-    ax.text(0.4, 3.6, "입력 전체를\n벡터 하나로 요약", fontsize=13, color=GRAY)
+    ax.text(0.4, 3.6, "입력 전체를\n벡터 하나로 요약", fontsize=14, color=GRAY)
     # (b) attention
     ax = axes[1]
     ax.set_title("(b) Attention: 출력 시점마다 다른 가중합 $c_t$", fontsize=16, color=DARK, fontweight="bold")
-    wts = [0.05, 0.15, 0.75, 0.05]
+    wts = [0.05, 0.75, 0.15, 0.05]  # "school" 생성 시점 → "학교에"(h_2)에 가장 큰 비중
     for j, w in enumerate(src):
         x = 0.4 + j * 1.35
         rbox(ax, x, 0.4, 1.15, 0.6, w, fc="white", ec=LINE, fs=12)
         rbox(ax, x, 1.5, 1.15, 0.8, f"$h_{j+1}$", fc=MINT2, fs=14, bold=True, color=TEAL)
         arr(ax, x + .575, 1.0, x + .575, 1.5, lw=1.5, ms=10)
         ax.plot([x + .575, 6.6], [2.3, 3.55], color=ACC, lw=1 + 9 * wts[j], alpha=.85, solid_capstyle="round")
-        ax.text(x + .575, 2.62, f"α={wts[j]:.2f}", ha="center", fontsize=11, color=ACC, fontweight="bold",
-                bbox=dict(fc="white", ec="none", pad=1.5))
-    rbox(ax, 6.1, 3.55, 1.0, 0.8, "$c_3$", fc=ACC, fs=18, bold=True, color="white")
-    rbox(ax, 7.8, 3.55, 1.0, 0.8, "$s_3$", fc=MINT2, fs=14, bold=True, color=TEAL)
+        ax.text(x + .575, 2.5 + 0.4 * (j % 2), f"α={wts[j]:.2f}", ha="center", fontsize=14, color=ACC,
+                fontweight="bold", bbox=dict(fc="white", ec="none", pad=1.5))
+    rbox(ax, 6.1, 3.55, 1.0, 0.8, "$c_4$", fc=ACC, fs=18, bold=True, color="white")
+    rbox(ax, 7.8, 3.55, 1.0, 0.8, "$s_4$", fc=MINT2, fs=14, bold=True, color=TEAL)
     arr(ax, 7.1, 3.95, 7.8, 3.95, color=ACC, lw=2)
-    ax.text(8.3, 4.7, "“school”\n생성 시점", ha="center", fontsize=12, color=DARK)
-    ax.text(6.0, 1.1, "위치별 표현 $h_1…h_S$를\n버리지 않고 보관", fontsize=13, color=GRAY)
-    ax.text(0.4, 5.6, "가중치는 설명용 예시(학습 결과 아님)", fontsize=11, color=GRAY)
+    ax.text(8.3, 4.7, "“school”\n생성 시점", ha="center", fontsize=14, color=DARK)
+    ax.text(6.0, 1.1, "위치별 표현 $h_1…h_S$를\n버리지 않고 보관", fontsize=14, color=GRAY)
+    ax.text(0.4, 5.6, "가중치는 설명용 예시(학습 결과 아님)", fontsize=14, color=GRAY)
     fig.tight_layout()
     save(fig, "bottleneck.png")
 
@@ -166,24 +166,22 @@ def fig_arch():
     ax.axis("off")
 
     def col(x, head, emb, layers, out, out_shape):
-        rbox(ax, x, 7.5, 4.4, 0.7, head, fc=TEAL, fs=14, bold=True, color="white")
-        rbox(ax, x, 6.45, 4.4, 0.75, emb, fc="white", ec=LINE, fs=12)
+        rbox(ax, x, 7.5, 4.4, 0.7, head, fc=TEAL, fs=13.5, bold=True, color="white")
+        rbox(ax, x, 6.45, 4.4, 0.75, emb, fc="white", ec=LINE, fs=14)
         arr(ax, x + 2.2, 6.45, x + 2.2, 6.1, ms=10)
-        ax.add_patch(FancyBboxPatch((x, 6.05 - 1.05 * len(layers) - .25), 4.4, 1.05 * len(layers) + .25,
-                                    boxstyle="round,pad=0,rounding_size=0.1", fc="#F4FAFB", ec=TEAL2,
-                                    lw=1.8, ls="--"))
-        ax.text(x + 4.3, 6.05 - 1.05 * len(layers) - .2, "× 6 층", ha="right", va="bottom", fontsize=13,
-                color=TEAL, fontweight="bold")
+        yb = 6.05 - 1.05 * len(layers) - .55  # 점선 상자 아래쪽에 "× 6 층" 띠를 둔다
+        ax.add_patch(FancyBboxPatch((x, yb), 4.4, 6.05 - yb, boxstyle="round,pad=0,rounding_size=0.1",
+                                    fc="#F4FAFB", ec=TEAL2, lw=1.8, ls="--"))
+        ax.text(x + 4.25, yb + 0.07, "× 6 층", ha="right", va="bottom", fontsize=15, color=TEAL, fontweight="bold")
         y = 6.05
         for i, (t, fc) in enumerate(layers):
             y -= 1.05
-            rbox(ax, x + .2, y + .12, 3.4, 0.8, t, fc=fc, fs=12, bold=True, color=DARK)
+            rbox(ax, x + .15, y + .12, 4.1, 0.8, t, fc=fc, fs=14, bold=True, color=DARK)
             if i < len(layers) - 1:
-                arr(ax, x + 1.9, y + .12, x + 1.9, y - .1, ms=10)
-        yb = 6.05 - 1.05 * len(layers) - .25
+                arr(ax, x + 2.2, y + .12, x + 2.2, y - .1, ms=10)
         arr(ax, x + 2.2, yb, x + 2.2, yb - .4, ms=10)
         rbox(ax, x, yb - 1.15, 4.4, 0.75, f"{out}\n{out_shape}", fc=ACC_BG if "logits" in out else MINT2,
-             fs=12, bold=True, color=ACC if "logits" in out else TEAL)
+             fs=14, bold=True, color=ACC if "logits" in out else TEAL)
         return yb
 
     col(0.2, "ENCODER · Source", "Token Embedding + PE\n(B,S) → (B,S,d)",
@@ -195,11 +193,11 @@ def fig_arch():
          ("Feed-forward\n+ residual · LayerNorm", MINT)],
         "Linear → vocabulary logits", "(B,T,d) → (B,T,|V|)")
     # E -> cross attention
-    arr(ax, 4.6, 2.95, 6.6, 4.45, color=ACC, lw=2.5, ms=16)
-    ax.text(5.5, 2.2, "K, V ← E\nQ ← Decoder", fontsize=12, color=ACC, fontweight="bold", ha="center")
-    ax.set_ylim(0.8, 8.4)
-    ax.text(0.2, 0.95, "위→아래로 읽기 · 층마다 파라미터는 별개 · 최종 E가 모든 Decoder 층의 cross-attention으로 전달",
-            fontsize=11.5, color=GRAY)
+    arr(ax, 4.6, 2.65, 6.55, 4.4, color=ACC, lw=2.5, ms=16)
+    ax.text(5.1, 1.55, "K, V ← E\nQ ← Decoder", fontsize=14, color=ACC, fontweight="bold", ha="center")
+    ax.set_ylim(0.05, 8.4)
+    ax.text(0.2, 0.15, "위→아래로 읽기 · 층마다 파라미터는 별개\n최종 E가 모든 Decoder 층의 cross-attention으로 전달",
+            fontsize=14, color=GRAY, va="bottom")
     save(fig, "transformer_arch.png")
 
 
@@ -219,10 +217,12 @@ def fig_pe():
     ax = axes[0]
     pe = pe_table(50, 64)
     im = ax.imshow(pe, cmap="RdBu_r", vmin=-1, vmax=1, aspect="auto")
-    ax.set_xlabel("차원 인덱스 (짝수=sin, 홀수=cos)", fontsize=12)
-    ax.set_ylabel("위치 pos", fontsize=12)
-    ax.set_title("PE 행렬 (d=64, pos 0–49)", fontsize=14, fontweight="bold", color=DARK)
-    fig.colorbar(im, ax=ax, fraction=.04)
+    ax.set_xlabel("차원 인덱스 (짝수=sin, 홀수=cos)", fontsize=15)
+    ax.set_ylabel("위치 pos", fontsize=15)
+    ax.set_title("PE 행렬 (d=64, pos 0–49)", fontsize=16, fontweight="bold", color=DARK)
+    ax.tick_params(labelsize=14)
+    cb = fig.colorbar(im, ax=ax, fraction=.04)
+    cb.ax.tick_params(labelsize=13)
     ax = axes[1]
     d = 32
     pos = np.linspace(0, 40, 400)
@@ -231,10 +231,11 @@ def fig_pe():
         f = 1 / (10000 ** (2 * i / d))
         ax.plot(pos, np.sin(pos * f), color=c, lw=2.4, label=f"i={i} sin")
         ax.plot(pos, np.cos(pos * f), color=c, lw=2.0, ls="--", label=f"i={i} cos")
-    ax.set_xlabel("위치 pos", fontsize=12)
-    ax.set_title("d=32: 차원쌍 i가 커질수록 느리게 변한다", fontsize=14, fontweight="bold", color=DARK)
-    ax.legend(ncol=3, fontsize=10, loc="lower left", frameon=False)
-    ax.set_ylim(-1.55, 1.15)
+    ax.set_xlabel("위치 pos", fontsize=15)
+    ax.set_title("d=32: 차원쌍 i가 커질수록 느리게 변한다", fontsize=16, fontweight="bold", color=DARK)
+    ax.tick_params(labelsize=14)
+    ax.legend(ncol=3, fontsize=13, loc="lower left", frameon=False, columnspacing=1.0, handlelength=1.6)
+    ax.set_ylim(-2.0, 1.15)
     ax.grid(alpha=.25)
     fig.tight_layout()
     save(fig, "pe.png")
@@ -328,12 +329,14 @@ def fig_sqrt():
     ax.bar(x - .2, raw, .38, color=ACC, label="q·k (스케일 없음)")
     ax.bar(x + .2, sc, .38, color=TEAL, label=r"q·k / $\sqrt{d_h}$")
     for xi, r, s_ in zip(x, raw, sc):
-        ax.text(xi - .2, r + .3, f"{r:.1f}", ha="center", fontsize=11, color=ACC)
-        ax.text(xi + .2, s_ + .3, f"{s_:.1f}", ha="center", fontsize=11, color=TEAL)
-    ax.set_xticks(x, [f"$d_h$={d}" for d in dhs], fontsize=12)
-    ax.set_ylabel("점수의 표준편차", fontsize=12)
-    ax.set_title(r"성분 평균 0·분산 1 가정: 표준편차 ≈ $\sqrt{d_h}$", fontsize=14, fontweight="bold", color=DARK)
-    ax.legend(frameon=False, fontsize=11)
+        ax.text(xi - .2, r + .3, f"{r:.1f}", ha="center", fontsize=14, color=ACC)
+        ax.text(xi + .2, s_ + .3, f"{s_:.1f}", ha="center", fontsize=14, color=TEAL)
+    ax.set_xticks(x, [f"$d_h$={d}" for d in dhs], fontsize=15)
+    ax.tick_params(axis="y", labelsize=14)
+    ax.set_ylim(0, max(raw) * 1.3)
+    ax.set_ylabel("점수의 표준편차", fontsize=14)
+    ax.set_title(r"성분 평균 0·분산 1 가정: 표준편차 ≈ $\sqrt{d_h}$", fontsize=15, fontweight="bold", color=DARK)
+    ax.legend(frameon=False, fontsize=14, loc="upper left")
     ax.grid(axis="y", alpha=.25)
     ax = axes[1]
     dh = 64
@@ -346,10 +349,11 @@ def fig_sqrt():
     xx = np.arange(8)
     ax.bar(xx - .2, a_raw[order], .38, color=ACC, label="softmax(q·k)")
     ax.bar(xx + .2, a_sc[order], .38, color=TEAL, label=r"softmax(q·k/$\sqrt{d_h}$)")
-    ax.set_xticks(xx, [f"k{j+1}" for j in range(8)], fontsize=11)
+    ax.set_xticks(xx, [f"k{j+1}" for j in range(8)], fontsize=15)
+    ax.tick_params(axis="y", labelsize=14)
     ax.set_ylim(0, 1.05)
-    ax.set_title("$d_h$=64, Key 8개: 스케일이 없으면 한 곳에 몰림", fontsize=14, fontweight="bold", color=DARK)
-    ax.legend(frameon=False, fontsize=11)
+    ax.set_title("$d_h$=64, Key 8개: 스케일이 없으면 한 곳에 몰림", fontsize=15, fontweight="bold", color=DARK)
+    ax.legend(frameon=False, fontsize=14, loc="upper right")
     ax.grid(axis="y", alpha=.25)
     fig.tight_layout()
     save(fig, "sqrt_scale.png")
@@ -366,7 +370,7 @@ def fig_mha():
         ("X", "(B,N,d)\n(2,5,8)", MINT2, TEAL),
         ("선형 투영\nQ·K·V", "(B,N,d)\n(2,5,8)", "white", TEAL),
         ("view\nHead 분리", "(B,N,H,dₕ)\n(2,5,2,4)", MINT2, TEAL),
-        ("transpose(1,2)", "(B,H,N,dₕ)\n(2,2,5,4)", MINT2, TEAL),
+        ("transpose\n(1, 2)", "(B,H,N,dₕ)\n(2,2,5,4)", MINT2, TEAL),
         ("Head별\nAttention", "A: (2,2,5,5)\nO: (2,2,5,4)", ACC_BG, ACC),
         ("transpose\n+ reshape", "(B,N,d)\n(2,5,8)", MINT2, TEAL),
         ("W_O", "(B,N,d)\n(2,5,8)", "white", TEAL),
@@ -374,20 +378,20 @@ def fig_mha():
     bw, gap = 1.62, 0.33
     for i, (h, shp, fc, c) in enumerate(steps):
         x = 0.1 + i * (bw + gap)
-        rbox(ax, x, 2.3, bw, 1.25, h, fc=fc, ec=c, fs=12.5, bold=True, color=c)
-        ax.text(x + bw / 2, 1.75, shp, ha="center", va="center", fontsize=12, color=DARK, family="DejaVu Sans Mono")
+        rbox(ax, x, 2.3, bw, 1.25, h, fc=fc, ec=c, fs=14, bold=True, color=c)
+        ax.text(x + bw / 2, 1.75, shp, ha="center", va="center", fontsize=14, color=DARK, family="DejaVu Sans Mono")
         if i < len(steps) - 1:
             arr(ax, x + bw + .03, 2.92, x + bw + gap - .03, 2.92, ms=11)
     # head split illustration
     ax.text(7.0, 4.25, "d=8 특징을 H=2개의 부분공간(각 $d_h$=4)으로 — 토큰(N=5)은 나누지 않는다", ha="center",
-            fontsize=13, color=DARK, fontweight="bold")
+            fontsize=16, color=DARK, fontweight="bold")
     for h in range(2):
         for t in range(5):
             for f in range(4):
                 x0 = 3.0 + h * 4.6 + f * 0.33
                 ax.add_patch(plt.Rectangle((x0, 0.15 + (4 - t) * 0.2 - 0.05), 0.3, 0.17,
                                            fc=TEAL if h == 0 else ACC, alpha=.35 + .12 * f, ec="white"))
-        ax.text(3.0 + h * 4.6 + 1.5, 0.55, f"head {h+1}: 5 토큰 × 4 특징", va="center", fontsize=12,
+        ax.text(3.0 + h * 4.6 + 1.5, 0.55, f"head {h+1}: 5 토큰 × 4 특징", va="center", fontsize=14,
                 color=TEAL if h == 0 else ACC, fontweight="bold")
     save(fig, "mha_shapes.png")
 

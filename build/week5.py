@@ -37,6 +37,7 @@ d.glossary([["Attention 가중치 α", "각 위치를 얼마나 참고할지 (�
             ["Key (K)", "비교 대상이 되는 벡터", "책의 색인"],
             ["Value (V)", "가중합으로 실제 전달되는 벡터", "책의 내용"],
             ["Head", "독립된 Q·K·V 투영 한 벌", "서로 다른 관점의 독자"],
+            ["d_h", "Q·K·V 벡터 하나의 차원 (head당 차원, Part 4)", "한 독자가 보는 특징의 개수"],
             ["위치 인코딩 (PE)", "토큰 벡터에 더하는 위치 정보", "좌석 번호표"]])
 
 # ============================================================ Part 1
@@ -62,11 +63,11 @@ s = d.slide("Attention의 세 단계", lead="① 정렬 점수 → ② softmax�
 top, bot = s.area.top(1.55, gap=0.3)
 s.formula(["e[t, j] = a( s[t−1], h[j] )     α[t, j] = softmax_j( e[t, j] )", "c[t] = Σ_j  α[t, j] · h[j]"], top, size=21)
 L, R = bot.cols(0.52, gap=0.4)
-s.table(["위치 j", "α", "값 v_j", "α · v_j"], [["1", "0.1", "(1, 0)", "(0.1, 0)"], ["2", "0.2", "(0, 1)", "(0, 0.2)"],
+s.table(["위치 j", "α", "값 h_j", "α · h_j"], [["1", "0.1", "(1, 0)", "(0.1, 0)"], ["2", "0.2", "(0, 1)", "(0, 0.2)"],
                                            ["3", "0.7", "(2, 2)", "(1.4, 1.4)"], ["합", "1.0", "", "**(1.5, 1.6)**"]],
         L, size=15, align="cccc", highlight=[3])
 s.bullets(["하나의 c가 아니라 출력마다 **다른 c_t**", "가장 큰 것 하나를 **복사하는 게 아니다**", ("여러 위치를 비중대로 **섞는다** (soft)", 1),
-           "점수 함수 a: 작은 신경망, 내적 등 (다음 장)"], R)
+           "점수 함수 a: 작은 신경망, 내적 등 (두 장 뒤)"], R)
 
 s = d.slide("정렬(alignment)을 눈으로", lead="각 출력 단어가 어느 입력 단어에 비중을 두었는지 — 관찰 도구이지 증명은 아니다", stage="검증",
             notes="행은 Decoder 출력 위치, 열은 Encoder 입력 위치, 칸의 값은 α. 어순이 달라도 '고양이가'는 'cat'에, '매트'는 'mat'에 큰 비중을 둔다(설명용 가상 정렬). "
@@ -77,7 +78,7 @@ s.image(A("week5/alignment.png"), L)
 rest = s.card(R, "보여주는 것", ["출력 위치마다 **어느 입력에** 큰 비중을 두었나", "어순이 달라도 대응을 찾는다"], tone="teal",
               bullets=True, fit_h=True)
 s.card(Box(rest.x, rest.y, rest.w, rest.h), "증명하지 않는 것", ["그 단어가 예측의 **유일한 원인**이라는 것", "모델이 사람처럼 **이해**했다는 것",
-                                                        "→ 관찰과 인과 검증을 구분 (원자료 개념 확인 18)"], tone="accent", bullets=True, fit_h=True)
+                                                        "→ 관찰과 인과 검증을 구분"], tone="accent", bullets=True, fit_h=True)
 
 s = d.slide("점수 함수: 어떻게 비교할까", lead="Bahdanau(2014)는 작은 신경망으로, Luong(2015)은 내적으로 — Transformer는 내적을 택한다", stage="역사",
             notes="Bahdanau, Cho, Bengio(2014) 'Neural Machine Translation by Jointly Learning to Align and Translate': 작은 신경망(additive)으로 점수를 계산. "
@@ -115,7 +116,7 @@ s = d.slide("Self-attention: 문장이 스스로를 참조한다", lead="모든 
 rest = s.cards([{"head": "예시", "tone": "plain", "body": ["“그 **동물**은 너무 피곤해서 길을 건너지 않았다. **그것**은 …”",
                                                          "‘그것’의 표현을 만들 때 ‘동물’을 많이 참고하면 좋다"]},
                 {"head": "RNN", "body": ["먼 두 토큰이 만나려면 **N단계**를 거친다", "h_t는 h_(t−1)이 필요 → **순차**"]},
-                {"head": "Self-attention", "tone": "accent", "body": ["한 층에서 **직접** 만난다 (경로 1)", "모든 위치를 **동시에** 계산"]}],
+                {"head": "Self-attention", "tone": "accent", "body": ["한 층에서 **직접** 만난다 (경로 길이 1)", "모든 위치를 **동시에** 계산"]}],
                cols=3, body_size=16, head_size=18)
 s.callout("질문: 같은 입력 X에서 ‘비교할 기준’과 ‘가져올 내용’을 어떻게 만들까? → **Q · K · V**",
           Box(rest.x, rest.y + 0.1, rest.w, 0.9), kind="key", size=17)
@@ -139,8 +140,8 @@ s = d.slide("학습되는 것은 투영 행렬", lead="Q = X W_Q,  K = X W_K,  V
 L, R = s.cols(0.55)
 s.image(A("week5/qkv_proj.png"), L)
 s.formula(["Q = X · W_Q", "K = X · W_K", "V = X · W_V"], Box(R.x, R.y, R.w, 1.7), size=22)
-s.bullets(["X: (N, d) · W: (d, d_h) → (N, d_h)", "**W_Q, W_K, W_V**: 학습되는 파라미터", "**Q, K, V**: 입력마다 계산되는 활성값",
-           "2주차 선형층과 같은 계산"], Box(R.x, R.y + 1.95, R.w, R.h - 1.95), size=16)
+s.bullets(["X: (N, d) · W: (d, d_h) → (N, d_h)", "**d_h**: 투영된 q, k, v 벡터의 차원", "**W_Q, W_K, W_V**: 학습되는 파라미터",
+           "**Q, K, V**: 입력마다 계산되는 활성값", "2주차 선형층과 같은 계산"], Box(R.x, R.y + 1.95, R.w, R.h - 1.95), size=16)
 
 s = d.slide("Self-attention이라고 Q = K = V는 아니다", lead="원본 X가 같아도 투영이 다르면 값이 다르다 — ‘A가 B를 보는 비중’ ≠ ‘B가 A를 보는 비중’", stage="검증",
             notes="W_Q, W_K, W_V가 다르므로 같은 X에서 나온 Q, K, V는 일반적으로 다르다. 그래서 점수 행렬 QKᵀ도 대칭이 아니다: 'A가 B를 보는 점수' q_A·k_B와 'B가 A를 보는 점수' q_B·k_A는 다르다. "
@@ -152,7 +153,7 @@ rest = s.cards([{"head": "Q ≠ K ≠ V", "body": ["같은 X, 다른 W_Q · W_K 
                 {"head": "왜 나누나?", "tone": "accent", "body": ["**찾는 기준**(Q·K)과 **가져올 내용**(V)을 따로 학습",
                                                                  "축마다 미리 정해진 의미는 **없다**"]}],
                cols=3, body_size=16, head_size=18)
-s.callout("원자료 개념 확인 04: Self-attention의 Q, K, V는 같은 원본에서 **서로 다른 투영**으로 만들 수 있다.",
+s.callout("Self-attention의 Q, K, V는 같은 원본에서 **서로 다른 투영**으로 만들 수 있다.",
           Box(rest.x, rest.y + 0.1, rest.w, 0.8), kind="tip", size=16)
 
 s = d.slide("파라미터 vs 활성값", lead="정적인 파라미터로 동적인 정보 결합을 계산한다 — Attention 가중치 A는 학습 표가 아니다", stage="정리",
@@ -162,7 +163,7 @@ s = d.slide("파라미터 vs 활성값", lead="정적인 파라미터로 동적�
 s.table(["", "예", "입력마다 바뀌나?", "optimizer가 갱신하나?"],
         [["파라미터", "W_Q, W_K, W_V, W_O", "아니오 — 모든 입력에 **공유**", "**예**"],
          ["활성값", "Q, K, V", "**예** — 입력·이전 층에 따라 계산", "아니오"],
-         ["Attention 가중치", "A = softmax(QKᵀ / √d_h)", "**예** — 문장마다 다르다", "아니오 (gradient 경로에는 포함)"]],
+         ["Attention 가중치", "A = softmax(QKᵀ / √d_h)\n(다음 Part에서 계산)", "**예** — 문장마다 다르다", "아니오 (gradient 경로에는 포함)"]],
         Box(s.area.x, s.area.y, s.area.w, 2.5), widths=[2.0, 3.0, 3.4, 3.0], size=16)
 s.callout("추론 때 모델 가중치는 고정되어 있어도 **A는 입력마다 다르다** → ‘정적인 파라미터로 동적인 결합’",
           Box(s.area.x, s.area.y + 2.8, s.area.w, 0.9), kind="key", size=17)
@@ -178,9 +179,9 @@ top, bot = s.area.top(1.0, gap=0.3)
 s.formula("Attention(Q, K, V) = softmax( Q Kᵀ / √d_h + M ) · V", top, size=24)
 mid, low = bot.top(1.9, gap=0.3)
 s.flow([{"head": "① 점수", "body": "Q Kᵀ\n(N, N)"}, {"head": "② 스케일", "body": "÷ √d_h"},
-        {"head": "③ mask", "body": "+ M (−∞)\n6주차"}, {"head": "④ softmax", "body": "행마다 Key 축\n합 = 1", "tone": "accent"},
+        {"head": "③ mask", "body": "+ M (−∞)\n6주차"}, {"head": "④ softmax", "body": "A = softmax(…)\n행마다 Key 축\n합 = 1", "tone": "accent"},
         {"head": "⑤ 가중합", "body": "A V\n(N, d_h)", "tone": "dark"}], mid, body_size=14, head_size=16, gap=0.35)
-s.bullets(["**행 = Query**, **열 = Key** — softmax는 **Key 축**(원자료 개념 확인 06)",
+s.bullets(["**행 = Query**, **열 = Key** — softmax는 **Key 축**",
            "shape: Q (N, d_h) · Kᵀ (d_h, N) → **(N, N)** → A V → **(N, d_h)**"], low, size=17)
 
 s = d.slide("4토큰 예제: 설정", lead="토큰 A · B · C · D, 특징 2개 — 숫자는 설명용이며 학습 결과가 아니다", stage="계산",
@@ -191,7 +192,8 @@ s.image(A("week5/attn_setup.png"), L)
 s.table(["토큰", "q", "k", "v"], [["A", "(1, 0)", "(1, 0)", "(1, 0)"], ["B", "(0, 1)", "(0, 1)", "(0, 1)"],
                                  ["C", "(1, 1)", "(1, 1)", "(2, 2)"], ["D", "(−1, 0.5)", "(−1, 1)", "(−1, 1)"]],
         Box(R.x, R.y, R.w, 2.4), size=15, align="cccc")
-s.bullets(["d_h = 2 → 스케일 **√2**", "먼저 **Query A**의 행 하나를 손으로"], Box(R.x, R.y + 2.65, R.w, R.h - 2.65), size=16)
+s.bullets(["q · k · v는 **투영이 끝난 값**이라고 가정 (X, W는 생략)", "d_h = 2 → 스케일 **√2**", "먼저 **Query A**의 행 하나를 손으로"],
+          Box(R.x, R.y + 2.65, R.w, R.h - 2.65), size=16)
 
 s = d.slide("Query A를 손으로 계산", lead="점수 → ÷√2 → exp → 합으로 나누기 → Value 가중합", stage="계산",
             notes="q_A = (1, 0). 점수: k_A와 1, k_B와 0, k_C와 1, k_D와 −1. ÷√2: 0.707, 0, 0.707, −0.707. "
@@ -202,8 +204,11 @@ s.takeaway("o_A = 0.365·v_A + 0.180·v_B + 0.365·v_C + 0.089·v_D = (1.008, 1.
 s.table(["Key", "q_A · k", "÷ √2", "exp", "softmax α", "α · v"],
         [["A (1, 0)", "1", "0.707", "2.028", "**0.365**", "(0.365, 0)"], ["B (0, 1)", "0", "0", "1.000", "**0.180**", "(0, 0.180)"],
          ["C (1, 1)", "1", "0.707", "2.028", "**0.365**", "(0.731, 0.731)"], ["D (−1, 1)", "−1", "−0.707", "0.493", "**0.089**", "(−0.089, 0.089)"],
-         ["합", "", "", "5.549", "1.000", "**(1.008, 1.000)**"]], widths=[1.6, 1.3, 1.2, 1.2, 1.6, 2.2], size=16, align="cccccc",
-        highlight=[4])
+         ["합", "", "", "5.549", "1.000", "**(1.008, 1.000)**"]], Box(s.area.x, s.area.y, s.area.w, 3.0),
+        widths=[1.6, 1.3, 1.2, 1.2, 1.6, 2.2], size=16, align="cccccc", highlight=[4])
+s.bullets(["**A와 C는 같은 비중** — 둘 다 q_A와의 내적이 1", "**D는 반대 방향** → 내적 −1 → 가장 작은 비중 (0.089)",
+           "출력 o_A는 네 Value의 **가중합** — 가장 큰 것 하나를 고르지 않는다"],
+          Box(s.area.x, s.area.y + 2.75, s.area.w, s.area.h - 2.75), size=16)
 
 s = d.slide("전체 행렬로: 점수 → A → O", lead="나머지 Query도 같은 규칙 — 네 행을 행렬곱 한 번에", stage="계산",
             notes="왼쪽: 점수 QKᵀ/√2 (4×4). 가운데: 행별 softmax A — 각 행의 합 1. 오른쪽: O = AV (4×2). 첫 행이 방금 손으로 계산한 Query A. "
@@ -231,12 +236,12 @@ s = d.slide("가중치를 해석할 때와 경계 조건", lead="큰 α ≠ 큰 
                   "경계 조건: 어떤 행의 모든 Key가 mask로 가려지면 softmax의 확률 분포가 정의되지 않아 구현에 따라 NaN이나 0이 된다 → 유효한 Query에는 허용된 Key가 적어도 하나 있도록 설계. "
                   "attention dropout 뒤에는 개별 행의 합이 1이 아닐 수 있다.")
 s.cards([{"head": "해석할 때", "bullets": True, "body": ["α가 커도 **V의 크기·방향**이 다르다", "뒤에 W_O · residual · FFN · 다음 층이 있다",
-                                                       "heatmap은 **관찰 도구** — 인과는 따로 검증"]},
+                                                       "가중치 숫자 하나로 **최종 출력 변화**를 알 수 없다"]},
          {"head": "경계 조건", "tone": "accent", "bullets": True,
           "body": ["모든 Key가 가려진 행 → softmax **정의 안 됨** (NaN 등)", "→ 유효한 Query엔 허용된 Key를 **최소 하나**",
                    "attention dropout 뒤엔 행 합이 1이 아닐 수 있다"]}], cols=2, body_size=17, head_size=19)
 s.area = Box(s.area.x, s.area.y + 2.75, s.area.w, s.area.h - 2.75)
-s.callout("원자료 개념 확인 18: 큰 attention 가중치를 봤다면 — ‘그 위치에 큰 참조 비중이 **관찰**되었다’고 말하고, "
+s.callout("큰 attention 가중치를 봤다면 — ‘그 위치에 큰 참조 비중이 **관찰**되었다’고 말하고, "
           "인과 해석은 **추가 검증**한다 (예: 그 위치를 가리거나 바꿔 출력 변화를 측정).",
           Box(s.area.x, s.area.y, s.area.w, 1.2), kind="key", size=16)
 
@@ -261,13 +266,13 @@ s = d.slide("d = 8, H = 2, N = 5를 따라가기", lead="(B, N, d) → 투영 �
                   "B=2, N=5, d=8, H=2, d_h=4: X (2,5,8) → Q (2,5,8) → view (2,5,2,4) → transpose (2,2,5,4). 점수 QKᵀ: (2,2,5,4)@(2,2,4,5) → (2,2,5,5). "
                   "A V → (2,2,5,4) → transpose + reshape → (2,5,8) → W_O → (2,5,8). 입력과 출력 shape이 같아서 층을 쌓을 수 있다. "
                   "개념 확인 05: Q (B,H,T,d_h), K (B,H,S,d_h)이면 QKᵀ는 (B,H,T,S) — d_h는 내적하며 사라진다.")
-top, bot = s.area.top(2.45, gap=0.2)
+top, bot = s.area.top(2.9, gap=0.2)
 s.image(A("week5/mha_shapes.png"), top)
 s.table(["단계", "연산", "shape", "의미"],
         [["입력", "X", "(2, 5, 8)", "문장 2개 · 토큰 5개 · 특징 8개"], ["투영", "X W_Q (d × d)", "(2, 5, 8)", "모든 head의 Q를 한 번에"],
          ["head 분리", "view → transpose", "(2, 2, 5, 4)", "배치 · head · 토큰 · 특징"], ["점수", "Q Kᵀ / √4", "(2, 2, 5, 5)", "head별 위치 관계"],
          ["가중합", "A V", "(2, 2, 5, 4)", "head별 새 표현"], ["결합 · 투영", "concat → W_O", "(2, 5, 8)", "입력과 같은 shape → 쌓을 수 있다"]],
-        bot, widths=[1.5, 2.4, 1.7, 4.2], size=13)
+        bot, widths=[1.5, 2.4, 1.7, 4.2], size=12)
 
 s = d.slide("PyTorch로 직접 구현", lead="투영 한 번 → head 축 만들기 → scaled dot-product → 합치기", stage="코드",
             notes="직접 구현한 multi-head self-attention. view(B, N, H, d_h).transpose(1, 2)가 핵심 shape 조작이다. softmax의 dim=-1은 Key 축. "
@@ -284,9 +289,11 @@ s.code("import torch, torch.nn as nn\n"
        "S = Q @ K.transpose(-2, -1) / dh ** 0.5   # (2,2,5,5)\n"
        "A = S.softmax(dim=-1)                     # Key 축\n"
        "O = (A @ V).transpose(1, 2).reshape(B, N, d)\n"
-       "print(Wo(O).shape)                        # (2, 5, 8)", L, size=12.5)
+       "print(Wo(O).shape)                        # (2, 5, 8)", L, size=14)
 s.bullets(["`view + transpose`: head 축 만들기", "`softmax(dim=-1)`: **Key 축**", "출력 shape = 입력 shape",
-           "`nn.MultiheadAttention(8, 2)`", ("파라미터 4 × (8·8 + 8) = **288**", 1)], R)
+           "기대 출력: `torch.Size([2, 5, 8])`", ("head별 가중치 A: (2, 2, 5, 5)", 1),
+           "`nn.MultiheadAttention(8, 2)`", ("파라미터 4 × (8·8 + 8) = **288**", 1),
+           "확인: `F.scaled_dot_product_attention(Q, K, V)`", ("와 `A @ V`가 같은지 `torch.allclose`로", 1)], R, size=16)
 
 s = d.slide("Head를 늘리면 무엇이 달라지나", lead="d를 고정하고 d_h = d/H면 파라미터와 주요 연산량은 그대로 — head당 차원이 줄고 점수 표는 늘어난다",
             stage="검증",
@@ -300,7 +307,7 @@ s.table(["d를 고정하고 H를 늘리면", "변화"], [["투영 파라미터 (
                                           ["저장하는 점수 표 (H · N²)", "**늘어난다**"]],
         Box(s.area.x, s.area.y, s.area.w, 2.4), widths=[5, 5], size=16, align="lc")
 s.callout("head의 역할은 **미리 정해지지 않는다** — ‘1번은 문법, 2번은 의미’는 구조가 아니라 사후 관찰이다. "
-          "관찰 · 해석 · 인과 검증을 구분해서 보고한다.", Box(s.area.x, s.area.y + 2.7, s.area.w, 1.1), kind="warn", size=16)
+          "H는 d와 함께 정하는 **설계 선택** (base: d = 512, H = 8, d_h = 64).", Box(s.area.x, s.area.y + 2.7, s.area.w, 1.1), kind="warn", size=16)
 
 # ============================================================ Part 5
 d.part(5, "순서 정보: 위치 인코딩", "Self-attention은 “개가 사람을 물었다”와 “사람이 개를 물었다”를 구분할까?")
@@ -328,6 +335,7 @@ top, bot = s.area.top(1.95, gap=0.3)
 s.flow([{"head": "ID", "body": "(B, S)"}, {"head": "임베딩 × √d", "body": "(B, S, d)"}, {"head": "+ 위치 벡터 PE", "body": "(S, d) → broadcasting", "tone": "accent"},
         {"head": "블록 입력", "body": "(B, S, d)", "tone": "dark"}], top, body_size=15, head_size=17)
 s.bullets(["Encoder와 Decoder **모두** 이 과정을 거친다", "더해도 **shape은 그대로** (1주차 broadcasting)",
+           "× √d: 원논문의 관례 — 임베딩 크기를 PE와 맞춘다 (핵심 아님)",
            "==주의== 내용과 위치가 **분리 저장**되는 것은 아니다 — 같은 차원에 섞인다", "그럼 PE는 어떤 벡터로? → 다음 장"], bot)
 
 s = d.slide("Sinusoidal 위치 인코딩", lead="차원 쌍마다 다른 주파수의 sin/cos — 앞쪽 차원은 빠르게, 뒤쪽은 느리게 변한다", stage="계산",
@@ -340,7 +348,8 @@ L, R = bot.cols(0.62, gap=0.35)
 s.image(A("week5/pe.png"), L)
 s.table(["d = 8", "차원 0", "차원 1", "차원 2", "차원 3"], [["pos 1", "0.841", "0.540", "0.100", "0.995"],
                                                      ["pos 2", "0.909", "−0.416", "0.199", "0.980"]], Box(R.x, R.y, R.w, 1.3), size=13, align="ccccc")
-s.bullets(["i가 클수록 **느리게** 변한다", ("시계의 초침 · 분침 · 시침", 1), "학습 파라미터 **없음**"], Box(R.x, R.y + 1.5, R.w, R.h - 1.5), size=15)
+s.bullets(["표는 d = 8 (그림은 d = 64 · 32)", "i가 클수록 **느리게** 변한다", ("시계의 초침 · 분침 · 시침", 1), "학습 파라미터 **없음**"],
+          Box(R.x, R.y + 1.5, R.w, R.h - 1.5), size=15)
 
 s = d.slide("“sin/cos가 정답”은 아니다", lead="위치 단서가 필요하다는 것과 특정 함수가 필수라는 것은 다른 주장", stage="역사",
             notes="원논문도 학습형 위치 임베딩과 비교했고 비슷한 결과를 보고했다. 이후 상대 위치 방식, RoPE(회전 위치 임베딩, 2021), ALiBi(2021) 등 다양한 방식이 쓰인다(후속 변형). "
@@ -379,26 +388,28 @@ s.table(["종류", "Q의 출처", "K · V의 출처", "볼 수 있는 범위", "
          ["Decoder masked self-attention", "Decoder 입력 표현", "같은 표현", "현재 위치와 **이전** 위치만", "T × T"],
          ["Cross-attention", "**Decoder** 표현", "**Encoder** 최종 출력", "유효한 source 전체", "**T × S**"]],
         Box(s.area.x, s.area.y, s.area.w, 2.6), widths=[2.9, 2.2, 2.2, 3.0, 1.2], size=15)
-s.callout("Self / Cross = **출처**의 차이, Causal / 양방향 = **범위**의 차이 — 서로 다른 축. "
-          "Cross-attention의 출력 길이는 **Query 수 T** (source 길이 S가 아니다).", Box(s.area.x, s.area.y + 2.9, s.area.w, 1.1), kind="key", size=16)
+s.callout("S = source 길이, T = target 길이. Self / Cross = **출처**의 차이, Causal / 양방향 = **범위**의 차이 — 서로 다른 축. "
+          "Cross-attention의 출력 길이는 **Query 수 T** (source 길이 S가 아니다).", Box(s.area.x, s.area.y + 2.9, s.area.w, 1.2), kind="key", size=16)
 
 # ============================================================ 마무리
 d.summary(["Attention = **점수 → softmax → 가중합**: 출력마다 다른 요약 c_t (2014)",
-           "Self-attention: 모든 위치가 직접 만난다 — **경로 1**, 순차 의존 없음",
+           "Self-attention: 모든 위치가 직접 만난다 — **경로 길이 1**, 순차 의존 없음",
            "Q · K · V는 같은 X의 **다른 투영**, 학습되는 것은 W_Q · W_K · W_V · W_O (A는 활성값)",
            "softmax(QKᵀ/√d_h)V: (N, d_h)·(d_h, N) → **(N, N)** → **(N, d_h)**, softmax는 Key 축",
            "Multi-head: (B, N, d) → **(B, H, N, d_h)** → 다시 (B, N, d), 역할은 미리 정해지지 않는다",
            "Self-attention은 순서를 모른다(**등변**) → **위치 인코딩**을 더한다"])
 
-d.quiz("셀프 체크 ①", [("Self-attention의 Q, K, V는 항상 같은 숫자인가? (개념 확인 04)", "아니다. 같은 X에서 서로 다른 투영 W_Q, W_K, W_V로 만들어 일반적으로 다르다"),
-                     ("Q: (B, H, T, d_h), K: (B, H, S, d_h)일 때 QKᵀ의 shape은? (05)", "(B, H, T, S) — d_h는 내적하며 사라진다"),
-                     ("Attention의 softmax는 보통 어느 축인가? (06)", "각 Query에 대한 Key 축 — Query마다 Key들에 비중을 나눈다"),
-                     ("Q 길이 3, K/V 길이 5인 cross-attention의 출력 길이는? (09)", "3 — 출력은 Query 하나당 한 벡터")])
+d.quiz("셀프 체크 ①", [("Self-attention의 Q, K, V는 항상 같은 숫자인가?", "아니다. 같은 X에서 서로 다른 투영 W_Q, W_K, W_V로 만들어 일반적으로 다르다"),
+                     ("Q: (B, H, T, d_h), K: (B, H, S, d_h)일 때 QKᵀ의 shape은?", "(B, H, T, S) — d_h는 내적하며 사라진다"),
+                     ("Attention의 softmax는 보통 어느 축인가?", "각 Query에 대한 Key 축 — Query마다 Key들에 비중을 나눈다"),
+                     ("Q 길이 3, K/V 길이 5인 cross-attention의 출력 길이는?", "3 — 출력은 Query 하나당 한 벡터")],
+       notes="원자료 개념 확인 04 · 05 · 06 · 09에 대응.")
 
-d.quiz("셀프 체크 ②", [("같은 d에서 head 수 H를 늘리면? (10)", "주요 투영 파라미터는 유지, head당 차원 d_h = d/H는 줄고 점수 표 수는 늘 수 있다"),
-                     ("위치 정보와 위치 의존 mask가 없는 self-attention의 순열 성질은? (13)", "순열 등변성: SA(PX) = P·SA(X) — 출력도 같은 순열로 섞인다"),
-                     ("어떤 head에서 큰 attention 가중치를 관찰했다. 무엇이라고 말할 수 있나? (18)", "그 위치에 큰 참조 비중이 관찰되었다고 말하고, 인과 해석은 추가 검증한다"),
-                     ("q_A = (1, 0)이고 모든 Key가 k = (0, 1)이면 attention 가중치는?", "모든 점수가 0 → softmax가 균등 → 모든 Key에 같은 비중 (1/N)")])
+d.quiz("셀프 체크 ②", [("같은 d에서 head 수 H를 늘리면?", "주요 투영 파라미터는 유지, head당 차원 d_h = d/H는 줄고 점수 표 수는 늘 수 있다"),
+                     ("위치 정보와 위치 의존 mask가 없는 self-attention의 순열 성질은?", "순열 등변성: SA(PX) = P·SA(X) — 출력도 같은 순열로 섞인다"),
+                     ("어떤 head에서 큰 attention 가중치를 관찰했다. 무엇이라고 말할 수 있나?", "그 위치에 큰 참조 비중이 관찰되었다고 말하고, 인과 해석은 추가 검증한다"),
+                     ("q_A = (1, 0)이고 모든 Key가 k = (0, 1)이면 attention 가중치는?", "모든 점수가 0 → softmax가 균등 → 모든 Key에 같은 비중 (1/N)")],
+       notes="원자료 개념 확인 10 · 13 · 18에 대응 (Q4는 추가 문제).")
 
 d.misconceptions([["“Attention 가중치는 학습되는 파라미터다”", "파라미터는 W_Q · W_K · W_V · W_O. **A는 입력마다 계산**되는 활성값"],
                   ["“Self-attention이면 Q = K = V”", "같은 X에서 **다른 투영**. 점수 행렬도 일반적으로 비대칭"],
@@ -407,7 +418,7 @@ d.misconceptions([["“Attention 가중치는 학습되는 파라미터다”", 
                   ["“Transformer가 attention을 발명했다”", "Attention은 2014, self-attention도 그 전에 있었다. 2017년은 **조합**"],
                   ["“위치 인코딩은 sin/cos여야 한다”", "학습형 · 상대 위치 · RoPE 등 여러 방식. 필요한 것은 **위치 단서**"]])
 
-d.homework([("손계산 (원자료 운영안 6회차)", "4토큰 예제에서 Query B, C의 행을 손으로 계산해 전체 행렬 그림과 맞춰 본다. √2 스케일을 빼면 어떻게 바뀌는지도."),
+d.homework([("손계산", "4토큰 예제에서 Query B, C의 행을 손으로 계산해 전체 행렬 그림과 맞춰 본다. √2 스케일을 빼면 어떻게 바뀌는지도."),
             ("shape 추적", "d = 12, H = 3, B = 2, N = 7일 때 multi-head의 모든 단계 shape을 표로 쓰고, 코드로 확인한다."),
             ("순열 실험", "dropout을 끈 nn.MultiheadAttention에 토큰 순서를 섞은 입력을 넣고 SA(PX) = P·SA(X)를 확인한다. 위치 인코딩을 더하면?")],
            notes="원자료 운영안 6·7회차 산출물: 정렬 점수·softmax·가중합 손계산, 위치·Q/K/V·Multi-head 실험.")
@@ -416,7 +427,9 @@ d.references([["[17] Bahdanau, Cho & Bengio (2014). Neural Machine Translation b
               ["[18] Luong, Pham & Manning (2015). Effective Approaches to Attention-based NMT", "점수 함수 비교"],
               ["[22] Vaswani et al. (2017). Attention Is All You Need", "§3.2 Attention, §3.5 위치 인코딩, Fig.1–2"],
               ["[27] The Annotated Transformer · [28] PyTorch nn.MultiheadAttention 문서", "shape과 구현 대조"],
-              ["[39][40] Attention 해석 관련 연구 (원자료 참고문헌)", "heatmap 해석의 한계"]])
+              ["[39][40] Attention 해석 관련 연구", "heatmap 해석의 한계"]],
+             notes="번호는 원자료 참고문헌 번호. 처음부터 모든 실험을 읽기보다 표에 적은 절과 그림만 먼저 읽는다. "
+                   "[39][40]은 원자료 참고문헌의 attention 해석 연구(가중치의 설명력 한계).")
 
 d.handoff(["출력마다 원문을 **다시 참조**하는 Attention", "모든 위치가 직접 만나는 **Self-attention**", "Q·K·V · Multi-head · 위치 인코딩"],
           ["attention만으로는 **토큰별 비선형 변환**이 없다", "깊게 쌓으면? 정답을 **훔쳐보지 않고** 학습하려면? **생성**은?"],
