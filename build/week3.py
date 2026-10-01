@@ -47,7 +47,7 @@ s = d.slide("이미지는 숫자 텐서", lead="흑백은 (H, W), 컬러는 (C, 
                   "여러 장을 묶으면 (B, C, H, W). 1주차의 (B, N, d)처럼 축마다 이름이 있다: 배치, 채널, 세로, 가로.")
 L, R = s.cols(0.6)
 s.image(A("week3/image_tensor.png"), L)
-s.bullets(["픽셀 = **밝기 숫자** (0 ~ 255)", "흑백: `(1, H, W)`", "컬러: `(3, H, W)` — R, G, B",
+s.bullets(["픽셀 = **밝기 숫자** (0 ~ 255)", ("0 = 검정, 255 = 흰색", 1), "흑백: `(1, H, W)`", "컬러: `(3, H, W)` — R, G, B",
            "배치: `(B, C, H, W)`", ("B 장, C 채널, H×W 픽셀", 1),
            "MLP에 넣으려면 한 줄로 펴야 한다", ("3×32×32 → 3072개 입력", 1)], R)
 
@@ -59,7 +59,8 @@ s = d.slide("MLP로 이미지를 다루면", lead="작은 32×32 컬러 이미�
 L, R = s.cols(0.6)
 s.image(A("week3/params_fc_conv.png"), L)
 s.bullets(["입력 32×32×3 → 출력 32×32×64", "**모든 연결**: 3,072 × 65,536", ("= ==201,326,592== 개", 1),
-           "펼치는 순간 **이웃 관계**가 사라진다", "국소 연결만: 1,769,472개", "국소 + **가중치 공유**: **1,728**개"], R)
+           "펼치는 순간 **이웃 관계**가 사라진다", "국소 연결만: 1,769,472개", ("각 출력이 3×3×3 = 27개 입력만 봄: 65,536 × 27", 1),
+           "국소 + **가중치 공유**: **1,728**개"], R)
 
 s = d.slide("이미지의 성질을 모델에 넣자", lead="데이터에 대한 믿음(구조적 가정)을 넣으면 적은 파라미터로 잘 배운다 — 대신 제약도 생긴다",
             stage="아이디어",
@@ -70,8 +71,8 @@ rest = s.cards([{"head": "① 지역성", "body": ["가까운 픽셀끼리 의�
                 {"head": "② 위치와 무관한 패턴", "body": ["귀는 어디 있어도 귀", "→ **같은 필터**를 모든 위치에"]},
                 {"head": "③ 계층 구조", "body": ["선 → 모양 → 부분 → 물체", "→ 층을 **쌓아** 넓게 본다"]}],
                cols=3, body_size=17, head_size=19)
-s.callout("대가: 가정이 틀린 데이터에서는 **제약**이 된다 — 한 층에서 멀리 떨어진 위치가 직접 만나지 못한다. "
-          "(5주차 Attention은 이 선택을 다르게 한다)", Box(rest.x, rest.y + 0.1, rest.w, 1.2), kind="warn", size=16)
+s.image(A("week3/inductive_bias.png"), Box(rest.x, rest.y, rest.w, 2.05))
+s.callout("대가: 가정이 틀린 데이터에서는 **제약**이 된다", Box(rest.x, rest.y + 2.2, rest.w, 0.65), kind="warn", size=16)
 
 # ============================================================ Part 2
 d.part(2, "합성곱: 가까운 곳만, 같은 필터로", "작은 필터 하나를 이미지 전체에 미끄러뜨리면?")
@@ -89,12 +90,13 @@ s.bullets(["필터 = ‘왼쪽 밝고 오른쪽 어두운’ **세로 경계 탐
 
 s = d.slide("합성곱의 식", lead="출력 한 칸 = 필터와 입력 조각의 내적 + 편향", stage="계산",
             notes="y[i, j] = Σ_u Σ_v W[u, v] · x[i+u, j+v] + b. 필터 크기 K×K 안의 모든 칸을 곱해서 더한다 — 1주차의 내적 그대로. "
-                  "원자료 주의: 딥러닝에서 'convolution'이라 부르는 구현은 대부분 필터를 뒤집지 않는 cross-correlation이다. 필터가 학습되므로 실용적 차이는 없다. "
+                  "주의: 딥러닝에서 'convolution'이라 부르는 구현은 대부분 필터를 뒤집지 않는 cross-correlation이다. 필터가 학습되므로 실용적 차이는 없다. "
                   "핵심은 두 가지: 국소 영역(작은 창)과 공유된 가중치(같은 W를 모든 위치에).")
 top, bot = s.area.top(1.05, gap=0.3)
 s.formula("y[i, j] = Σ_u Σ_v  W[u, v] · x[i+u, j+v]  +  b", top, size=24)
 L, R = bot.cols(0.5, gap=0.4)
-s.symbols([("W", "필터 가중치 (K×K) — 학습됨"), ("x[i+u, j+v]", "(i, j)에서 시작하는 입력 조각"),
+s.symbols([("W", "필터 가중치 (K×K) — 학습됨"), ("u, v", "필터 안의 위치 0 … K−1"),
+           ("x[i+u, j+v]", "(i, j)에서 시작하는 입력 조각"),
            ("b", "편향 (필터당 1개)"), ("y[i, j]", "특징 맵의 한 칸")], L, size=15, key_w=2.1)
 s.bullets(["결국 **1주차의 내적**을 위치마다 반복", "**국소 영역**: 작은 창 안만 본다", "**가중치 공유**: 모든 위치에 같은 W",
            ("주의: 딥러닝의 ‘convolution’은 보통 필터를 뒤집지 않는 cross-correlation", 1)], R)
@@ -108,7 +110,7 @@ s.formula("O = ⌊ (N − K + 2P) / S ⌋ + 1", top, size=28)
 L, R = bot.cols(0.62, gap=0.4)
 s.table(["입력 N", "필터 K", "padding P", "stride S", "출력 O"],
         [["6", "3", "0", "1", "**4**"], ["32", "5", "0", "1", "**28** (LeNet C1)"], ["32", "3", "1", "1", "**32** (크기 유지)"],
-         ["32", "3", "1", "2", "**16** (절반)"]], L, size=15, align="ccccc")
+         ["32", "3", "1", "2", "**16** (절반)"]], L, size=15, align="ccccc", widths=[1, 1, 1.15, 1, 2.1])
 s.bullets(["**N**: 입력 한 변", "**K**: 필터 크기", "**P**: 가장자리 0 덧대기", "**S**: 필터 보폭",
            "‘same’ padding: P = (K − 1) / 2"], R)
 
@@ -139,35 +141,37 @@ s = d.slide("수용 영역: 층을 쌓으면 넓게 본다", lead="3×3을 세 �
             notes="한 층의 3×3 필터는 3칸만 보지만, 그 출력을 다시 3×3으로 보면 입력 5칸, 한 번 더 쌓으면 7칸. "
                   "층을 쌓을수록 선 → 모양 → 부분 → 물체처럼 넓은 영역을 통합한다. VGG(2014)의 논리: 3×3 세 층은 7×7 한 층과 같은 범위를 보면서 "
                   "파라미터는 27C² vs 49C²로 적고 비선형성은 3번. 제약: 멀리 떨어진 두 위치가 만나려면 층을 여러 번 거쳐야 한다(경로가 길다).")
-L, R = s.cols(0.58)
-s.image(A("week3/receptive_field.png"), L)
+top, bot = s.area.top(2.4, gap=0.3)
+s.image(A("week3/receptive_field.png"), top)
+L, R = bot.cols(0.5, gap=0.4)
 s.bullets(["3×3 한 번: **3칸**, 두 번: **5칸**, 세 번: **7칸**", "층을 쌓으며 선 → 모양 → 물체로 **계층적 통합**",
-           "VGG (2014): 3×3 세 층 vs 7×7 한 층", ("파라미터 27C² vs 49C², 비선형성 3번", 1),
-           "==제약== 먼 위치가 만나려면 **경로가 길다**"], R)
+           "==제약== 먼 위치가 만나려면 **경로가 길다**"], L, size=17)
+s.bullets(["VGG (2014): 3×3 세 층 vs 7×7 한 층", ("같은 범위(7칸)를 보면서", 1),
+           ("파라미터 27C² vs 49C², 비선형성 3번", 1)], R, size=17)
 
 s = d.slide("LeNet: 합성곱 신경망의 원형", lead="1989 우편번호 인식 → 1998 LeNet-5: 합성곱 → pooling → … → 완전 연결", stage="역사",
             notes="LeCun 등(1989)은 역전파로 합성곱 신경망을 학습해 손글씨 우편번호를 인식했다. 1998년 LeNet-5 논문은 이 구조를 정리했다. "
                   "(Fukushima의 1980 Neocognitron도 국소 연결과 계층 구조의 선구적 모델.) "
                   "shape 흐름: 1×32×32 → C1 6@28×28 (5×5) → S2 6@14×14 → C3 16@10×10 → S4 16@5×5 → C5 120 → F6 84 → 출력 10. "
                   "합성곱으로 특징을 뽑고 공간 크기를 줄인 뒤, 마지막에 지난주의 MLP로 분류한다.")
-top, bot = s.area.top(2.2, gap=0.3)
+top, bot = s.area.top(2.5, gap=0.25)
 s.image(A("week3/lenet_pipeline.png"), top)
 L, R = bot.cols(0.55, gap=0.4)
 s.table(["층", "연산", "출력 shape"], [["C1", "5×5 합성곱 6개", "6 × 28 × 28"], ["S2", "2×2 pooling", "6 × 14 × 14"],
                                      ["C3", "5×5 합성곱 16개", "16 × 10 × 10"], ["S4 → C5 → F6", "pooling → 완전 연결", "16×5×5 → 120 → 84"],
-                                     ["출력", "10개 숫자 클래스", "10"]], L, size=13, align="lcc")
+                                     ["출력", "10개 숫자 클래스", "10"]], L, size=14, align="lcc", widths=[1.3, 1.6, 1.6])
 s.bullets(["1980 Neocognitron (Fukushima): 선구적 계층 모델", "1989 LeCun: **역전파로 CNN 학습** (우편번호)",
            "1998 LeNet-5: 구조 정리", "특징 추출(합성곱) → 분류(**MLP**)"], R, size=16)
 
 s = d.slide("등변성 ≠ 불변성", lead="입력이 옮겨지면 특징도 옮겨진다(등변). 최종 출력이 ‘완전히 같다’(불변)는 별개의 주장", stage="검증",
             notes="같은 필터를 모든 위치에 쓰므로 입력 패턴을 한 칸 옮기면 특징 맵의 반응도 한 칸 옮겨진다 — translation equivariance(이동 등변성). "
                   "여기에 전체 max 같은 요약을 붙이면 이 예시에서는 위치와 무관한 값(불변)이 된다. "
-                  "원자료 주의: CNN이 자동으로 완벽한 위치 불변성을 보장하는 것은 아니다. 경계·padding·stride·pooling에 따라 조건이 달라진다.")
-L, R = s.cols(0.58)
+                  "주의: CNN이 자동으로 완벽한 위치 불변성을 보장하는 것은 아니다. 경계·padding·stride·pooling에 따라 조건이 달라진다.")
+L, R = s.cols(0.6)
 s.image(A("week3/equivariance.png"), L)
 s.bullets(["**등변성**: 입력 이동 → 특징도 같이 이동", ("같은 필터를 모든 위치에 쓰기 때문", 1),
            "**불변성**: 입력이 이동해도 출력이 같음", ("전체 max 같은 요약을 붙이면 (이 예시에서)", 1),
-           "==주의== CNN이 완벽한 불변성을 **보장하지 않는다**", ("경계 · padding · stride · pooling에 따라 다름", 1)], R)
+           "==주의== CNN이 완벽한 불변성을 **보장하지 않는다**", ("경계 · padding · stride · pooling에 따라 다름", 1)], R, size=17)
 
 s = d.slide("PyTorch로 shape 확인", lead="Conv2d 한 줄에 필터 수·크기·padding이 모두 들어 있다", stage="코드",
             notes="nn.Conv2d(in_channels, out_channels, kernel_size, padding). 입력 (8, 3, 32, 32) → 출력 (8, 64, 32, 32). "
@@ -182,14 +186,13 @@ s.code("import torch, torch.nn as nn\n"
        "print(sum(p.numel() for p in conv.parameters()))  # 1792\n\n"
        "print(nn.MaxPool2d(2)(y).shape)          # (8, 64, 16, 16)\n\n"
        "c1 = nn.Conv2d(1, 6, kernel_size=5)      # LeNet C1\n"
-       "print(c1(torch.randn(1, 1, 32, 32)).shape)  # (1, 6, 28, 28)", L, size=13)
-cb = s.last_code_box
-s.callout("실습: 주석을 가리고 출력 크기 공식으로 먼저 계산한 뒤 실행해 맞춰 본다.", Box(L.x, cb.b + 0.25, L.w, 0.8), kind="tip", size=15)
-s.bullets(["`Conv2d(C_in, C_out, K, padding)`", "파라미터 1,792 = 손 계산과 같다", "`MaxPool2d(2)`: 공간 절반",
-           "LeNet C1: 32 → **28**", ("파라미터 6 × 25 + 6 = 156", 1)], R)
+       "print(c1(torch.randn(1, 1, 32, 32)).shape)  # (1, 6, 28, 28)", L, size=14)
+s.callout("실습: 주석을 가리고 출력 크기 공식으로 먼저 계산한 뒤 실행해 맞춰 본다.", Box(L.x, L.b - 0.8, L.w, 0.8), kind="tip", size=15)
+s.bullets(["`Conv2d(C_in, C_out, K, padding)`", "출력 shape를 **먼저 손으로** 써 보기", "파라미터 1,792 = 손 계산과 같다",
+           "`MaxPool2d(2)`: 공간 절반", "LeNet C1: 32 → **28**", ("파라미터 6 × 25 + 6 = 156", 1)], R)
 
 s = d.slide("CNN의 네 가지 개념 — 얻는 것과 대가", lead="모든 구조적 가정은 이득과 제약을 함께 가져온다", stage="정리",
-            notes="원자료의 정리 표. 네 개념 각각이 무엇을 얻게 해 주고, 대신 어떤 제약을 만드는지. "
+            notes="원자료의 정리 표(발표자 참고). 네 개념 각각이 무엇을 얻게 해 주고, 대신 어떤 제약을 만드는지. "
                   "특히 '한 층에서 멀리 떨어진 위치가 직접 만나지 못한다', '넓은 의존 관계를 만들 때 경로가 길어진다'는 제약을 기억해 두자. "
                   "5주차 Attention은 이 제약을 다른 방식으로 푼다.")
 s.table(["개념", "얻는 것", "함께 생기는 제약"],
@@ -208,7 +211,7 @@ s = d.slide("SVM: 가장 넓은 여백을 가진 경계", lead="여러 직선 �
             notes="Cortes & Vapnik(1995) Support-Vector Networks. 선형 분리가 가능해도 경계는 무수히 많다. SVM은 가장 가까운 점(서포트 벡터)까지의 거리, 즉 마진이 최대인 경계를 고른다. "
                   "마진이 넓을수록 새 데이터에 대한 일반화가 좋다는 이론적 근거가 있다. 볼록 최적화라서 해가 유일하고 안정적으로 찾아진다 — 당시 신경망보다 다루기 쉬웠다.")
 L, R = s.cols(0.52)
-s.image(A("week3/svm_margin.png"), L)
+s.image(A("week3/svm_margin.png"), Box(L.x, L.y, L.w, L.h - 0.3))
 s.bullets(["Cortes & Vapnik (1995)", "경계 후보는 무수히 많다 → **마진 최대**인 것", "**서포트 벡터**: 경계를 결정하는 가장 가까운 점들",
            "볼록 최적화: 해가 **유일**, 안정적", "1990~2000년대 많은 분야의 강력한 기준 모델"], R)
 
@@ -230,22 +233,24 @@ d.part(4, "깊은 모델이 가능해진 조건 (2006–2012)", "층을 깊게 �
 s = d.slide("기울기가 곱해지며 사라진다", lead="역전파는 층마다 도함수를 곱한다 — sigmoid의 도함수는 최대 0.25", stage="문제",
             notes="2주차 연쇄법칙: 기울기는 층을 거꾸로 지나며 곱해진다. sigmoid 도함수의 최댓값은 0.25이므로 10층을 지나면 최대 0.25^10 ≈ 9.5×10^−7. "
                   "앞쪽 층은 사실상 학습 신호를 받지 못한다(기울기 소실). ReLU는 양수 구간 도함수가 1이라 이 곱셈 감소가 없다. "
-                  "(가중치 크기 효과는 제외한 단순화. 원자료 주의: ReLU라고 모든 소실 문제가 사라지는 것은 아니다.)")
-L, R = s.cols(0.6)
-s.image(A("week3/relu_grad.png"), L)
-s.bullets(["기울기 ∝ 도함수들의 **곱**", "sigmoid′ ≤ 0.25", ("10층: 0.25^10 ≈ ==0.00000095==", 1),
-           "앞쪽 층은 학습 신호를 거의 못 받는다", "ReLU′ = 1 (양수 구간)", ("곱해도 줄지 않는다", 1),
-           "가중치 크기 효과는 제외한 단순화"], R)
+                  "(가중치 크기 효과는 제외한 단순화. 주의: ReLU라고 모든 소실 문제가 사라지는 것은 아니다.)")
+top, bot = s.area.top(3.1, gap=0.25)
+s.image(A("week3/relu_grad.png"), top)
+L, R = bot.cols(0.5, gap=0.4)
+s.bullets(["기울기 ∝ 층마다 곱해지는 **도함수들의 곱**", "sigmoid′ ≤ 0.25 → 10층: 0.25^10 ≈ ==0.00000095==",
+           "앞쪽 층은 학습 신호를 거의 못 받는다"], L, size=16)
+s.bullets(["ReLU′ = 1 (양수 구간) → 곱해도 **줄지 않는다**", "가중치 크기 효과는 제외한 단순화",
+           ("ReLU라고 모든 소실 문제가 사라지지는 않는다", 1)], R, size=16)
 
 s = d.slide("2006: 깊은 망을 다시 학습시키려는 시도", lead="층을 하나씩 먼저 학습(사전학습)한 뒤 전체를 미세 조정", stage="역사",
             notes="Hinton, Osindero, Teh(2006) 'A fast learning algorithm for deep belief nets': 층을 하나씩 비지도 방식으로 먼저 학습(greedy layer-wise pretraining)한 뒤 "
                   "전체를 역전파로 미세 조정. 깊은 모델도 학습될 수 있다는 것을 보여 주며 '딥러닝' 부흥의 계기가 되었다. "
                   "원자료 주의: 당시의 '사전학습'과 오늘날 대규모 언어 모델의 '사전학습'은 같은 개념이 아니다. "
                   "이후 ReLU, 좋은 초기화, 대규모 데이터, GPU가 갖춰지면서 층별 사전학습 없이도 깊은 모델을 학습하게 된다.")
-top, bot = s.area.top(2.1, gap=0.3)
+top, bot = s.area.top(1.4, gap=0.3)
 s.flow([{"head": "1층 먼저 학습", "body": "비지도: 입력을 잘 표현하도록"}, {"head": "2층 학습", "body": "1층 출력을 입력으로"},
         {"head": "… 차례로 쌓기", "body": "greedy layer-wise"}, {"head": "전체 미세 조정", "body": "역전파로 함께", "tone": "dark"}],
-       top, body_size=15, head_size=17)
+       top, body_size=16, head_size=18)
 s.bullets(["Hinton, Osindero & Teh (2006) — **Deep Belief Network**", "깊은 모델도 학습될 수 있음을 보여 **딥러닝 부흥**의 계기",
            "==주의== 당시의 ‘사전학습’ ≠ 오늘 LLM의 ‘사전학습’",
            "이후 ReLU · 초기화 · 데이터 · GPU가 갖춰지며 이 단계 없이도 학습 가능해짐"], bot)
@@ -254,7 +259,7 @@ s = d.slide("2012: AlexNet", lead="ImageNet 대회에서 top-5 오류 15.3% — 
             notes="Krizhevsky, Sutskever, Hinton(2012). ImageNet(ILSVRC) 약 120만 장, 1000개 클래스. 합성곱 5층 + 완전 연결 3층, 약 6,000만 파라미터. "
                   "GTX 580 GPU 2대로 약 5~6일 학습. ReLU로 학습 속도 향상, dropout으로 과적합 억제, 데이터 증강(자르기·뒤집기) 사용. "
                   "top-5 오류 15.3%로 2위 26.2%를 크게 앞서며 컴퓨터 비전이 딥러닝으로 넘어가는 전환점이 되었다.")
-top, bot = s.area.top(1.9, gap=0.3)
+top, bot = s.area.top(2.6, gap=0.25)
 s.image(A("week3/alexnet_pipeline.png"), top)
 L, R = bot.cols(0.45, gap=0.4)
 s.table(["항목", "값"], [["top-5 오류", "**15.3%** (2위 26.2%)"], ["데이터", "ImageNet 약 120만 장, 1000 클래스"],
@@ -262,12 +267,12 @@ s.table(["항목", "값"], [["top-5 오류", "**15.3%** (2위 26.2%)"], ["데이
 s.bullets(["**ReLU**: 학습이 몇 배 빨라짐", "**Dropout**: 학습 중 뉴런 일부를 끄기 → 과적합 억제",
            "**데이터 증강**: 자르기·뒤집기로 데이터 늘리기", "**GPU**: 대규모 행렬곱을 병렬로"], R)
 
-s = d.slide("구조 하나 덕분이 아니다", lead="AlexNet = 데이터 + GPU + CNN + ReLU + 규제 + 학습 기법이 함께 작동한 사례", stage="정리",
+s = d.slide("구조 하나 덕분이 아니다", lead="AlexNet = 데이터 · GPU · ReLU · 규제 · 초기화/최적화 · 구조가 함께 작동한 사례", stage="정리",
             notes="원자료: 깊은 모델이 가능해진 것은 구조 하나 덕분이 아니다. 표현력이 충분해도 학습·데이터·자원이 부족하면 그 표현을 얻지 못한다. "
-                  "여섯 가지 조건이 동시에 맞아떨어졌다. 이 관점은 Transformer에도 그대로 적용된다 — Transformer의 성공도 구조, 대규모 데이터, 병렬 하드웨어, 학습 기법(warm-up, 정규화)이 함께 만든 것.")
-s.cards([{"head": "데이터", "body": "ImageNet 약 120만 장"}, {"head": "연산", "body": "GPU 병렬 행렬곱"},
-         {"head": "활성화", "body": "ReLU — 기울기 유지"}, {"head": "규제", "body": "Dropout · 데이터 증강"},
-         {"head": "초기화 · 최적화", "body": "SGD + momentum, 적절한 초기화"}, {"head": "구조", "body": "CNN의 구조적 가정", "tone": "accent"}],
+                  "여섯 가지 조건(데이터·GPU·ReLU·규제·초기화/최적화·구조)이 동시에 맞아떨어졌다. 이 관점은 Transformer에도 그대로 적용된다 — Transformer의 성공도 구조, 대규모 데이터, 병렬 하드웨어, 학습 기법(warm-up, 정규화)이 함께 만든 것.")
+s.cards([{"head": "데이터", "body": "ImageNet 약 120만 장"}, {"head": "GPU", "body": "대규모 행렬곱을 병렬로"},
+         {"head": "ReLU", "body": "곱해도 기울기가 줄지 않는다"}, {"head": "규제", "body": "Dropout · 데이터 증강"},
+         {"head": "초기화/최적화", "body": "SGD + momentum, 적절한 초기화"}, {"head": "구조", "body": "CNN의 구조적 가정", "tone": "accent"}],
         cols=3, body_size=16, head_size=19)
 s.callout("표현력(무엇을 만들 수 있나)이 충분해도, 학습·데이터·자원이 없으면 그 표현을 **얻지 못한다** — Transformer도 마찬가지.",
           Box(s.area.x, s.area.b - 1.0, s.area.w, 1.0), kind="key", size=16)
@@ -288,21 +293,22 @@ s = d.slide("깊게 쌓으면 더 나빠진다?", lead="56층 plain 망의 ‘�
             notes="He et al.(2015)의 관찰: 단순히 층을 쌓은 plain 망에서 56층이 20층보다 훈련 오류와 테스트 오류가 모두 높았다(CIFAR-10). "
                   "과적합이라면 훈련 오류는 낮아야 한다. 이론적으로는 56층이 20층을 흉내 낼 수 있다(남는 36층이 입력을 그대로 통과시키면). "
                   "그런데 학습이 그 해를 찾지 못한다 — 2주차의 '표현 가능 vs 학습으로 찾음' 구분 그대로. 그림은 논문의 경향을 단순화한 개념도.")
-L, R = s.cols(0.6)
-s.image(A("week3/degradation.png"), L)
-s.bullets(["He et al. (2015) — CIFAR-10", "56층 plain의 **훈련** 오류 > 20층", ("과적합이면 훈련 오류는 낮아야 한다", 1),
-           "56층은 20층을 흉내 낼 수 **있다**", ("남는 층이 입력을 그대로 통과시키면", 1),
-           "그런데 **학습이 그 해를 못 찾는다**", ("2주차: 표현 가능 ≠ 학습으로 찾음", 1)], R)
+top, bot = s.area.top(3.0, gap=0.25)
+s.image(A("week3/degradation.png"), top)
+L, R = bot.cols(0.5, gap=0.4)
+s.bullets(["He et al. (2015) — CIFAR-10", "56층 plain의 **훈련** 오류 > 20층", ("과적합이면 훈련 오류는 낮아야 한다", 1)], L, size=16)
+s.bullets(["56층은 20층을 흉내 낼 수 **있다** (남는 층이 입력을 그대로 통과)",
+           "그런데 **학습이 그 해를 못 찾는다**", ("2주차: 표현 가능 ≠ 학습으로 찾음", 1)], R, size=16)
 
 s = d.slide("잔차 연결: y = x + F(x)", lead="층은 ‘변화량’만 배우고, 입력은 지름길로 그대로 더한다", stage="아이디어",
             notes="ResNet의 아이디어: 층이 출력 전체를 새로 만드는 대신, 입력 x에 더할 변화량 F(x)만 학습한다. y = x + F(x). "
                   "'아무것도 안 하기'가 쉬워진다(F = 0이면 y = x). 앞의 문제(남는 층이 입력을 통과시키기)가 저절로 해결된다. "
                   "기울기 관점: ∂y/∂x = I + ∂F/∂x — 항등(identity) 경로 덕분에 기울기가 층을 건너 직접 흐른다. 오른쪽 그림(toy 실험)에서 40층을 지나도 기울기가 유지된다. "
-                  "원자료 주의: 이 식은 단순 잔차(Pre-LN 형태)에서 성립. 원형 Transformer의 Post-LN은 뒤에 LN이 있어 전체 미분이 이렇게 단순하지 않다(6주차).")
-top, bot = s.area.top(3.2, gap=0.25)
+                  "주의: 이 식은 단순 잔차(Pre-LN 형태)에서 성립. 원형 Transformer의 Post-LN은 뒤에 LN이 있어 전체 미분이 이렇게 단순하지 않다(6주차).")
+top, bot = s.area.top(2.9, gap=0.25)
 s.image(A("week3/residual.png"), top)
 L, R = bot.cols(0.45, gap=0.4)
-s.formula(["y = x + F(x)", "∂y/∂x = I + ∂F/∂x"], L, size=20)
+s.formula(["y = x + F(x)", "∂y/∂x = I + ∂F/∂x"], Box(L.x, L.y, L.w, 1.0), size=20)
 s.bullets(["F = 0이면 y = x → ‘통과’가 쉬워진다", "항등 경로로 **기울기가 직접** 흐른다",
            ("오른쪽 그래프는 toy 실험 (논문 결과 아님)", 1)], R, size=16)
 
@@ -322,24 +328,26 @@ s = d.slide("BatchNorm vs LayerNorm", lead="BatchNorm은 배치를 가로질러,
             notes="BatchNorm(Ioffe & Szegedy, 2015): 같은 특징을 배치 전체에 걸쳐 정규화 — 배치 크기와 다른 샘플에 의존. CNN에서 큰 효과. "
                   "LayerNorm(Ba, Kiros, Hinton, 2016): 샘플(토큰) 하나의 d개 특징을 정규화 — 배치와 무관, 길이가 제각각인 시퀀스에 적합. "
                   "그래서 Transformer는 LayerNorm을 쓴다(6주차). 입력 (B, N, d)에서 LayerNorm(d)는 마지막 축 d로 평균을 낸다.")
-L, R = s.cols(0.6)
-s.image(A("week3/bn_vs_ln.png"), L)
-s.table(["", "BatchNorm (2015)", "LayerNorm (2016)"],
+top, bot = s.area.top(2.8, gap=0.25)
+s.image(A("week3/bn_vs_ln.png"), top)
+L, R = bot.cols(0.58, gap=0.4)
+s.table(["구분", "BatchNorm (2015)", "LayerNorm (2016)"],
         [["평균 내는 범위", "같은 특징, **배치 전체**", "**샘플 하나**의 모든 특징"], ["배치 크기 영향", "받는다", "받지 않는다"],
-         ["주 사용처", "CNN", "RNN · **Transformer**"]], Box(R.x, R.y, R.w, 2.6), size=14, align="lcc")
+         ["주 사용처", "CNN", "RNN · **Transformer**"]], L, size=14, align="lcc", widths=[1.1, 1.3, 1.3])
 s.callout("Transformer 입력 (B, N, d)에서 LayerNorm(d)는 **토큰마다** d개 값으로 평균·분산을 낸다 (6주차).",
-          Box(R.x, R.y + 2.9, R.w, 1.4), kind="tip", size=15)
+          R, kind="tip", size=15)
 
 s = d.slide("Residual과 Normalization을 어떻게 볼까", lead="‘의미를 추출하는 블록’이 아니라 ‘깊은 계산을 학습 가능하게 하는 조건’", stage="정리",
             notes="원자료 관점: 잔차·정규화를 CNN 층이나 Attention처럼 '무언가를 알아내는 부품'으로 설명하면 오해가 생긴다. "
                   "이들은 깊은 계산을 이어 붙이고 안정적으로 학습시키기 위한 조건이다. ResNet(2015)과 LayerNorm(2016)은 Transformer(2017)에 그대로 들어간다. "
                   "또 ConvS2S(2017)는 순환 없이 합성곱만으로 시퀀스를 처리해, 병렬화가 Attention만의 시도가 아니었음을 보여준다(원자료 계보).")
-rest = s.cards([{"head": "Residual (2015)", "body": ["깊게 쌓아도 **정보와 기울기**가 흐르는 지름길", "→ Transformer의 모든 sublayer에"]},
-                {"head": "LayerNorm (2016)", "body": ["깊은 망의 **표현 스케일** 관리", "→ Transformer의 모든 sublayer에"]},
-                {"head": "주의", "tone": "accent", "body": ["원형 Transformer는 **Post-LN**", "전체 미분이 단순히 I + ∂F/∂x가 아니다 (6주차)"]}],
-               cols=3, body_size=16, head_size=18)
+rest = s.cards([{"head": "Residual (2015)", "body": ["깊게 쌓아도 **정보와 기울기**가 흐르는 지름길", "→ Transformer의 모든 층(Attention·MLP) 뒤에"]},
+                {"head": "LayerNorm (2016)", "body": ["깊은 망의 **표현 스케일** 관리", "→ Transformer의 모든 층(Attention·MLP)에"]},
+                {"head": "주의", "tone": "accent", "body": ["원형 Transformer는 잔차 합 **뒤에** LayerNorm을 둔다 (Post-LN)",
+                                                        "그러면 지름길 미분이 I + ∂F/∂x처럼 단순하지 않다 (6주차)"]}],
+               cols=3, body_size=17, head_size=19)
 s.callout("이 둘은 ‘무언가를 알아내는 부품’이 아니라, **깊은 계산을 이어 붙이는 조건**이다.",
-          Box(rest.x, rest.y + 0.1, rest.w, 0.9), kind="key", size=17)
+          Box(rest.x, rest.y + 0.1, rest.w, 0.9), kind="key", size=18)
 
 s = d.slide("다리 놓기: 고정된 창을 넘어서", lead="CNN은 ‘미리 정한’ 국소 영역을 합친다 — 참조할 위치와 비중을 입력에 따라 ‘계산’하면?",
             stage="아이디어",
@@ -351,7 +359,8 @@ rest = s.cards([{"head": "CNN (오늘)", "tone": "plain", "bullets": True,
                 {"head": "Attention (5주차)", "tone": "accent", "bullets": True,
                  "body": ["참조 위치와 비중을 **입력에 따라 계산**", "한 층에서 **모든 위치**가 직접 만날 수 있다",
                           "대신 순서·위치 정보를 따로 넣어야 한다"]}], cols=2, body_size=17, head_size=19)
-s.callout("그 전에: 다음 주는 순서가 있고 길이가 제각각인 **언어** 데이터를 다룬다.", Box(rest.x, rest.y + 0.1, rest.w, 0.8),
+s.image(A("week3/bridge_sketch.png"), Box(rest.x, rest.y, rest.w, 1.9))
+s.callout("그 전에: 다음 주는 순서가 있고 길이가 제각각인 **언어** 데이터를 다룬다.", Box(rest.x, rest.y + 2.1, rest.w, 0.7),
           kind="tip", size=16)
 
 # ============================================================ 마무리
@@ -359,7 +368,7 @@ d.summary(["CNN = **지역성 + 가중치 공유 + 계층** — 파라미터 2�
            "출력 크기 O = ⌊(N − K + 2P)/S⌋ + 1, 파라미터 = C_out·C_in·K² + C_out",
            "모든 구조적 가정은 **이득과 제약**을 함께 가져온다 (등변성 ≠ 불변성)",
            "SVM: 마진과 **일반화**, 모델 복잡도를 통제하는 관점",
-           "깊은 학습 = 데이터 + GPU + ReLU + 규제 + 초기화 + 구조가 **함께** (AlexNet 2012)",
+           "깊은 학습 = 데이터 · GPU · ReLU · 규제 · 초기화/최적화 · 구조가 **함께** (AlexNet 2012)",
            "**Residual**(y = x + F(x))과 **LayerNorm**은 깊은 계산을 학습 가능하게 하는 조건 → Transformer로"])
 
 d.quiz("셀프 체크", [("입력 64×64, 필터 5×5, padding 2, stride 2일 때 출력 크기는?", "⌊(64 − 5 + 4)/2⌋ + 1 = ⌊31.5⌋ + 1 = 32"),
@@ -370,12 +379,12 @@ d.quiz("셀프 체크", [("입력 64×64, 필터 5×5, padding 2, stride 2일 �
 
 d.misconceptions([["“CNN → RNN → Transformer 순서로 교체되었다”", "서로 다른 **데이터 구조**에 다른 가정을 넣은 계보가 병행했다"],
                   ["“CNN은 완벽한 위치 불변성을 보장한다”", "등변성과 불변성은 다르다. 경계·padding·stride·pooling에 따라 달라진다"],
-                  ["“AlexNet은 CNN 구조 덕분에 성공했다”", "데이터·GPU·ReLU·dropout·증강 등이 **함께** 작동했다"],
+                  ["“AlexNet은 CNN 구조 덕분에 성공했다”", "데이터 · GPU · ReLU · 규제 · 초기화/최적화가 구조와 **함께** 작동했다"],
                   ["“깊을수록 훈련 오류가 낮아지는 게 당연하다”", "plain 망은 깊어지면 훈련 오류가 **커질 수 있다** (최적화 문제)"],
                   ["“Residual·LayerNorm도 의미를 추출하는 블록이다”", "깊은 계산을 이어 붙이고 **학습 가능하게 하는 조건**이다"],
                   ["“2006년 사전학습 = 오늘 LLM의 사전학습”", "목적과 방법이 다른 개념이다"]])
 
-d.homework([("필터 동작 관찰 (원자료 권장 실습)", "3×3 필터 하나를 정해 6×6 입력에 적용한다. 입력 패턴을 한 칸 옮겼을 때 출력이 어떻게 바뀌는지 비교 (경계 처리는 같게)."),
+d.homework([("필터 동작 관찰","3×3 필터 하나를 정해 6×6 입력에 적용한다. 입력 패턴을 한 칸 옮겼을 때 출력이 어떻게 바뀌는지 비교 (경계 처리는 같게)."),
             ("파라미터 비교", "같은 입출력 크기의 완전 연결층·국소 연결층·합성곱의 파라미터 수를 계산해 표로 정리한다."),
             ("잔차 실험", "20층 MLP를 plain / residual 두 버전으로 만들어 첫 층의 기울기 크기를 비교한다 (PyTorch).")],
            notes="원자료 운영안 3회차 산출물: 필터·수용 영역·파라미터 수.")
@@ -387,7 +396,7 @@ d.references([["[10] LeCun et al. (1998). Gradient-Based Learning Applied to Doc
               ["[19] He et al. (2015). Deep Residual Learning for Image Recognition", "Fig.1 degradation, Fig.2 잔차 블록"],
               ["[20] Ba, Kiros & Hinton (2016). Layer Normalization · Ioffe & Szegedy (2015). Batch Normalization", "정규화 축의 차이"]])
 
-d.handoff(["**구조적 가정**(지역성·공유)으로 큰 입력을 효율적으로", "데이터·GPU·ReLU·**Residual·Norm**으로 깊은 모델을 학습"],
+d.handoff(["**구조적 가정**(지역성·공유)으로 큰 입력을 효율적으로", "데이터 · GPU · ReLU · **Residual · Norm**으로 깊은 모델을 학습"],
           ["**언어**는 격자가 아니라 순서, 길이도 제각각", "“그 책은 … (20단어 뒤) … 재미있었다” — **먼 단어**를 어떻게 기억할까?"],
           ["**순서를 어떻게 표현하고,**", "**먼 정보를 어떻게 기억할까?**", "RNN · LSTM · Seq2Seq"],
           notes="다음 주: 문장을 숫자로 바꾸는 법(토큰, 임베딩)부터, 순서를 따라 상태를 전달하는 RNN과 LSTM, 그리고 번역을 위한 Seq2Seq까지.")
