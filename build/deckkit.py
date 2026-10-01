@@ -414,7 +414,7 @@ class S:
                                          Inches(pw), Inches(ph))
 
     def card(self, box, head, body=None, tone="teal", body_size=15, head_size=17, bullets=None,
-             num=None, min_size=10, fit_h=False, head_fixed=False):
+             num=None, min_size=10, fit_h=False, head_fixed=False, head_h=None):
         """카드 하나. fit_h=True면 내용 높이로 줄이고 아래 남은 영역(Box)을 반환."""
         rest = None
         if fit_h:
@@ -432,7 +432,7 @@ class S:
             self.badge(inner.x, inner.y + 0.02, 0.42, num, fill_color=headc if tone != "dark" else WHITE,
                        color=WHITE if tone != "dark" else TEAL, size=12)
             hx = inner.x + 0.55
-        hh = min(0.9, max(0.42, est_height([head], inner.r - hx, head_size, gap=0) - 0.05))
+        hh = head_h or min(0.9, max(0.42, est_height([head], inner.r - hx, head_size, gap=0) - 0.05))
         self.textbox(head, Box(hx, inner.y, inner.r - hx, hh), size=head_size, bold=True, color=headc,
                      anchor="m", min_size=11, margin=0.02, gap=0, autofit=not head_fixed)
         if body:
@@ -477,12 +477,15 @@ class S:
         head_size = hs
         y = box.y
         for r in range(rows):
-            for k, c in enumerate(cards[r * cols:(r + 1) * cols]):
+            row = cards[r * cols:(r + 1) * cols]
+            hh = max(min(0.9, max(0.42, est_height([c["head"]], cw - 0.36 - (0.55 if (numbered or c.get("num")) else 0),
+                                                   head_size, gap=0) - 0.05)) for c in row)
+            for k, c in enumerate(row):
                 i = r * cols + k
                 b = Box(box.x + k * (cw + gap), y, cw, heights[r])
                 self.card(b, c["head"], c.get("body"), tone=c.get("tone", "teal"), body_size=body_size,
                           head_size=head_size, num=(i + 1) if numbered else c.get("num"),
-                          bullets=c.get("bullets"), head_fixed=True)
+                          bullets=c.get("bullets"), head_fixed=True, head_h=hh)
             y += heights[r] + gap
         return Box(box.x, y + 0.05, box.w, max(0.0, box.b - y - 0.05))
 
@@ -775,14 +778,26 @@ class Deck:
             chip = ctx.rect(Box(X1 - 1.3, Y_TOP + 0.08, 1.3, 0.4), fill_color=fc, radius=0.2)
             fill(chip.text_frame, [stage], size=13, color=tc, bold=True, align="c", anchor="m", margin=0.02, gap=0)
         self.n += 1
+        ctx._base_n = len(s.shapes)
         self._ctxs.append(ctx)
         return ctx
 
     def finish(self, ctx):
-        """본문 개체 틀을 쓰지 않은 슬라이드에서 빈 개체 틀 제거."""
+        """본문 개체 틀을 쓰지 않은 슬라이드에서 빈 개체 틀 제거하고, 본문이 위쪽에만 몰려 있으면 아래로 조금 내려 균형을 맞춘다."""
         if not ctx._used_body and ctx.body_ph is not None:
             ctx.body_ph._element.getparent().remove(ctx.body_ph._element)
             ctx.body_ph = None
+        shapes = list(ctx.s.shapes)[ctx._base_n:]
+        if ctx._used_body and ctx.body_ph is not None:
+            shapes.append(ctx.body_ph)
+        if not shapes:
+            return
+        bottom = max((sh.top + sh.height) / 914400 for sh in shapes)
+        gap = Y1 - bottom
+        if gap > 0.6:
+            dy = Inches(min(gap * 0.5, 0.9))
+            for sh in shapes:
+                sh.top = sh.top + dy
 
     def section(self, title, subtitle="", notes=None):
         """템플릿 '제목 슬라이드' 레이아웃(로고 포함)으로 만든 구역 표지."""
@@ -839,7 +854,7 @@ class Deck:
         ctx = self.slide(title, lead=lead, stage="검증", notes=(notes + "\n\n" if notes else "") + "[정답]\n" + ans)
         n = len(qa)
         gap = 0.16
-        rh = min(1.05, (ctx.area.h - gap * (n - 1)) / n)
+        rh = min(1.05, (ctx.area.h - 0.2 - gap * (n - 1)) / n)
         for i, (q, _) in enumerate(qa):
             b = Box(ctx.area.x, ctx.area.y + i * (rh + gap), ctx.area.w, rh)
             ctx.rect(b, fill_color=TINT)
@@ -870,8 +885,8 @@ class Deck:
         ctx.flow([{"head": "지난 주에 배운 것", "body": learned},
                   {"head": "아직 풀리지 않은 문제", "body": remaining, "tone": "accent"},
                   {"head": "이번 주의 질문", "body": question, "tone": "dark"}],
-                 Box(ctx.area.x, ctx.area.y + 0.2, ctx.area.w, min(ctx.area.h - 0.4, 4.2)),
-                 body_size=18, head_size=20, gap=0.55)
+                 Box(ctx.area.x, ctx.area.y + 0.3, ctx.area.w, min(ctx.area.h - 0.6, 3.5)),
+                 body_size=19, head_size=20, gap=0.55)
         return ctx
 
     def roadmap(self, parts, goals, notes=None):
@@ -953,8 +968,8 @@ class Deck:
         ctx.flow([{"head": "이번 주에 해결한 것", "body": solved},
                   {"head": "아직 남은 문제", "body": remaining, "tone": "accent"},
                   {"head": f"Week {self.week + 1}의 질문" if self.week < 6 else "다음 여정", "body": next_q,
-                   "tone": "dark"}], Box(ctx.area.x, ctx.area.y + 0.2, ctx.area.w, min(ctx.area.h - 0.4, 4.2)),
-                 body_size=18, head_size=20, gap=0.55)
+                   "tone": "dark"}], Box(ctx.area.x, ctx.area.y + 0.3, ctx.area.w, min(ctx.area.h - 0.6, 3.5)),
+                 body_size=19, head_size=20, gap=0.55)
         return ctx
 
     def save(self, path):

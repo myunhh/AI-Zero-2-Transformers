@@ -284,8 +284,8 @@ def fig_trained():
 def fig_graph():
     fig, ax = plt.subplots(figsize=(11.5, 4.9))
     ax.set_xlim(0, 12); ax.set_ylim(0, 5.3); ax.axis("off")
-    nodes = [("x", 0.9, "[1, 1]", "입력"), ("z", 3.5, "[1.5, −0.5]", "z = xW₁+b₁"), ("h", 6.1, "[1.5, 0]", "h = ReLU(z)"),
-             ("ŷ", 8.5, "3", "ŷ = hW₂+b₂"), ("L", 10.9, "0.5", "L = ½(ŷ−y)²")]
+    nodes = [("x", 0.9, "[1, 1]", "입력"), ("z", 3.5, "[1.5, −0.5]", "z = xW$_1$+b$_1$"), ("h", 6.1, "[1.5, 0]", "h = ReLU(z)"),
+             ("ŷ", 8.5, "3", "ŷ = hW$_2$+b$_2$"), ("L", 10.9, "0.5", "L = ½(ŷ−y)$^2$")]
     grads = {"z": "[2, 0]", "h": "[2, 1]", "ŷ": "1", "L": "1"}
     for nm, x, fv, lab in nodes:
         ax.add_patch(FancyBboxPatch((x - 0.85, 2.1), 1.7, 1.1, boxstyle="round,pad=0.05", fc=MINT, ec=TEAL, lw=2))

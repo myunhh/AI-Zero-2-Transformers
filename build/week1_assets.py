@@ -77,13 +77,13 @@ def tensor_ranks():
 
 # ------------------------------------------------------------------ 2. 배치 축
 def batch_axis():
-    fig, ax = plt.subplots(figsize=(9, 6))
+    fig, ax = plt.subplots(figsize=(9, 7))
     _clean(ax)
-    c = 0.5
+    c = 0.62
     s1 = ["나는", "학교에", "간", "다", "."]
     s2 = ["비가", "온다", ".", "PAD", "PAD"]
-    x0, y0 = 2.2, 5.6
-    off = 0.55
+    x0, y0 = 2.6, 5.4
+    off = 0.7
     # back sentence (b=1)
     for r in range(5):
         pad = s2[r] == "PAD"
@@ -94,24 +94,27 @@ def batch_axis():
     for r in range(5):
         for k in range(8):
             ax.add_patch(Rectangle((x0 + k * c, y0 - (r + 1) * c), c, c, fc=MINT2, ec=T, lw=1))
-        ax.text(x0 - 0.12, y0 - (r + .5) * c, s1[r], ha="right", va="center", fontsize=13, color=D)
+        ax.text(x0 - 0.12, y0 - (r + .5) * c, s1[r], ha="right", va="center", fontsize=15, color=D)
     for r in range(5):
         col = G if s2[r] == "PAD" else T2
         ax.text(x0 + off + 8 * c + 0.12, y0 + off - (r + .5) * c, s2[r], ha="left", va="center",
-                fontsize=13, color=col, weight="bold" if s2[r] == "PAD" else None)
+                fontsize=15, color=col, weight="bold" if s2[r] == "PAD" else None)
     # axis labels
-    ax.annotate("", xy=(x0 + 8 * c, y0 - 5 * c - 0.3), xytext=(x0, y0 - 5 * c - 0.3),
-                arrowprops=dict(arrowstyle="->", color=T, lw=2))
-    ax.text(x0 + 4 * c, y0 - 5 * c - 0.65, "d = 8  (특징 축, 마지막 축)", ha="center", fontsize=15, color=T, weight="bold")
-    ax.annotate("", xy=(x0 - 1.45, y0 - 5 * c), xytext=(x0 - 1.45, y0),
-                arrowprops=dict(arrowstyle="->", color=T, lw=2))
-    ax.text(x0 - 1.65, y0 - 2.5 * c, "N = 5\n(토큰)", ha="right", va="center", fontsize=15, color=T, weight="bold")
+    ax.annotate("", xy=(x0 + 8 * c, y0 - 5 * c - 0.35), xytext=(x0, y0 - 5 * c - 0.35),
+                arrowprops=dict(arrowstyle="->", color=T, lw=2.2))
+    ax.text(x0 + 4 * c, y0 - 5 * c - 0.8, "d = 8  (특징 축, 마지막 축)", ha="center", fontsize=17, color=T,
+            weight="bold")
+    ax.annotate("", xy=(x0 - 1.6, y0 - 5 * c), xytext=(x0 - 1.6, y0),
+                arrowprops=dict(arrowstyle="->", color=T, lw=2.2))
+    ax.text(x0 - 1.8, y0 - 2.5 * c, "N = 5\n(토큰)", ha="right", va="center", fontsize=17, color=T, weight="bold")
     ax.annotate("", xy=(x0 + off + 0.1, y0 + off + 0.1), xytext=(x0 + 0.1, y0 + 0.1),
-                arrowprops=dict(arrowstyle="->", color=A, lw=2.5))
-    ax.text(x0 - 0.2, y0 + 0.55, "B = 2 (문장)", ha="right", fontsize=15, color=A, weight="bold")
-    ax.text(x0 + 4.4, y0 + off + 0.25, "짧은 문장은 PAD로 길이를 맞춘다", ha="center", fontsize=13, color=G)
-    ax.set_xlim(-0.2, 8.6)
-    ax.set_ylim(1.8, 6.7)
+                arrowprops=dict(arrowstyle="->", color=A, lw=2.8))
+    ax.text(x0 - 0.2, y0 + 0.6, "B = 2 (문장)", ha="right", fontsize=17, color=A, weight="bold")
+    ax.text(x0 + 4.9, y0 + off + 0.3, "짧은 문장은 PAD로 길이를 맞춘다", ha="center", fontsize=15, color=G)
+    ax.text(x0 + 2.4, y0 - 5 * c - 1.45, "shape = (B, N, d) = (2, 5, 8)", ha="center", fontsize=18, color=D,
+            weight="bold", family="DejaVu Sans Mono")
+    ax.set_xlim(-0.6, 9.4)
+    ax.set_ylim(0.4, 7.1)
     return _save(fig, "batch_axis.png")
 
 
@@ -282,13 +285,36 @@ def softmax_temp():
 
 
 # ------------------------------------------------------------------ 8. 미분(접선) + 한 걸음
-def derivative():
-    fig, ax = plt.subplots(figsize=(9, 5.8))
+def _bowl(ax):
+    """L(w) = ½(2w − 6)² 골짜기 곡선 (loss_bowl / derivative 공통)."""
     w = np.linspace(-0.3, 4.3, 200)
     Lw = 0.5 * (2 * w - 6) ** 2
     ax.plot(w, Lw, color=T, lw=3)
-    ax.text(3.2, 13.5, "L(w) = ½(2w − 6)²", color=T, fontsize=13,
+    ax.text(3.2, 13.5, "L(w) = ½(2w − 6)$^2$", color=T, fontsize=13,
             weight="bold", ha="center")
+    ax.set_xlabel("파라미터 w", fontsize=13)
+    ax.set_ylabel("손실 L", fontsize=13)
+    ax.set_ylim(-0.8, 20)
+    for s in ("top", "right"):
+        ax.spines[s].set_visible(False)
+
+
+def derivative():
+    # (a) 손실 지형 슬라이드용: 미분·갱신 없이 골짜기 모양과 두 점(w=1, 바닥 w=3)만
+    fig, ax = plt.subplots(figsize=(9, 5.8))
+    _bowl(ax)
+    ax.scatter([1], [8], s=110, color=A, zorder=5)
+    ax.text(1.12, 9.0, "지금 위치 w = 1 : L = 8", fontsize=13, color=A, weight="bold")
+    ax.scatter([3], [0], s=90, color=G, zorder=5)
+    ax.text(3, 1.2, "바닥 w = 3 : L = 0\n(ŷ = 6 = 정답)", fontsize=12.5, color=G, ha="center")
+    ax.annotate("", xy=(2.8, 0.5), xytext=(1.2, 7.5),
+                arrowprops=dict(arrowstyle="-|>", color=L, lw=1.6, ls="--", mutation_scale=16))
+    ax.text(1.75, 4.6, "어느 쪽으로, 얼마나?\n→ Part 4", fontsize=12.5, color=D, ha="left")
+    _save(fig, "loss_bowl.png")
+
+    # (b) 미분 슬라이드용: 접선 + 한 걸음
+    fig, ax = plt.subplots(figsize=(9, 5.8))
+    _bowl(ax)
     # tangent at w=1
     wt = np.linspace(0.1, 1.9, 10)
     ax.plot(wt, 8 - 8 * (wt - 1), color=A, lw=2, ls="--")
@@ -301,11 +327,6 @@ def derivative():
     ax.text(0.95, 5.0, "w ← w − 0.1×(−8)", fontsize=12.5, color=D, ha="right")
     ax.scatter([3], [0], s=70, color=G, zorder=5)
     ax.text(3, 0.7, "최솟값 w = 3\n(ŷ = 6 = 정답)", fontsize=12, color=G, ha="center")
-    ax.set_xlabel("파라미터 w", fontsize=13)
-    ax.set_ylabel("손실 L", fontsize=13)
-    ax.set_ylim(-0.8, 20)
-    for s in ("top", "right"):
-        ax.spines[s].set_visible(False)
     return _save(fig, "derivative.png")
 
 
@@ -332,7 +353,7 @@ def ce_curve():
 def gd_paths():
     fig, axs = plt.subplots(1, 4, figsize=(16, 4.9), sharey=True)
     w = np.linspace(-9, 17, 300)
-    cases = [(0.2, "η = 0.2 : 수렴"), (0.5, "η = 0.5 : 한 번에 도착"), (1.0, "η = 1.0 : 진동"),
+    cases = [(0.2, "η = 0.2 : 천천히 수렴"), (0.5, "η = 0.5 : 한 번에 도착"), (1.0, "η = 1.0 : 진동"),
              (1.1, "η = 1.1 : 발산")]
     for ax, (eta, tt) in zip(axs, cases):
         ax.plot(w, (w - 3) ** 2, color=T, lw=2.5)
@@ -344,17 +365,18 @@ def gd_paths():
             ax.annotate("", xy=(ws[i + 1], ls[i + 1]), xytext=(ws[i], ls[i]),
                         arrowprops=dict(arrowstyle="-|>", color=A, lw=1.6, alpha=0.85, mutation_scale=13))
         ax.scatter(ws, ls, color=A, s=45, zorder=5)
-        ax.text(ws[0], ls[0] + 12, "시작 −2", fontsize=11.5, color=D, ha="center")
+        ax.text(ws[0], ls[0] + 14, "시작 −2", fontsize=13, color=D, ha="center")
         ax.set_title(tt, fontsize=15, color=A if eta >= 1 else T, weight="bold")
         seq = ", ".join(f"{x:g}" for x in [round(v, 2) for v in ws[:4]])
-        ax.text(0.5, 0.97, f"w: {seq}…", transform=ax.transAxes, ha="center", va="top", fontsize=11.5, color=D)
+        ax.text(0.5, 0.97, f"w: {seq}…", transform=ax.transAxes, ha="center", va="top", fontsize=14,
+                color=D, weight="bold")
         ax.set_ylim(-5, 230)
         ax.set_xlim(-9, 17)
         ax.set_xlabel("w", fontsize=12)
         ax.tick_params(labelsize=10)
         for s in ("top", "right"):
             ax.spines[s].set_visible(False)
-    axs[0].set_ylabel("L(w) = (w − 3)²", fontsize=12)
+    axs[0].set_ylabel("L(w) = (w − 3)$^2$", fontsize=12)
     fig.tight_layout()
     return _save(fig, "gd_paths.png")
 

@@ -2,10 +2,11 @@
 
 그림은 슬라이드에 넣을 때 축소되므로, 원래 스크립트의 글자 크기에 배율을 곱해
 투영 화면에서도 읽히게 한다. 글자가 빽빽한 도식은 겹치지 않도록 배율을 낮게 둔다.
-사용: python regen_figs.py
+사용: python regen_figs.py [week2_figs.py ...]  (인자를 주면 그 스크립트의 그림만)
 """
 import os
 import runpy
+import sys
 
 import matplotlib
 matplotlib.use("Agg")
@@ -36,7 +37,10 @@ MODULES = {"week1_assets.py": ["tensor_ranks", "batch_axis", "broadcasting", "ma
            "week6_figs.py": ["fig_ln_axis", "fig_postpre", "fig_shift", "fig_causal", "fig_encdec", "fig_lr", "fig_kv",
                              "fig_mem", "fig_flops", "fig_archs", "fig_vit", "fig_genealogy"]}
 
+ONLY = set(sys.argv[1:])
 for script, funcs in MODULES.items():
+    if ONLY and script not in ONLY and os.path.basename(script) not in ONLY:
+        continue
     path = os.path.join(HERE, script)
     cwd = os.getcwd()
     os.chdir(os.path.dirname(path))
@@ -49,5 +53,6 @@ for script, funcs in MODULES.items():
     finally:
         os.chdir(cwd)
 
-_cur[0] = 1.3
-runpy.run_path(os.path.join(HERE, "figs_w1.py"), run_name="__main__")
+if not ONLY or "figs_w1.py" in ONLY:
+    _cur[0] = 1.3
+    runpy.run_path(os.path.join(HERE, "figs_w1.py"), run_name="__main__")
