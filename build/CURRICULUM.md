@@ -42,17 +42,17 @@
 
 ### Week 1 — Tensor와 학습: 컴퓨터가 배운다는 것은?
 - 과정 소개: 도착점(Transformer 그림을 설명하는 5가지 능력), 여섯 질문 지도, 공부법(문제→아이디어→계산→검증, 예측 후 확인)
-- Part 1 규칙에서 학습으로 (1943 McCulloch–Pitts, 1950 Turing, 1956 Dartmouth / 규칙 vs 학습 / 모델 f_θ와 파라미터)
+- Part 1 규칙에서 학습으로 (1943 McCulloch–Pitts, 1950 Turing, 1956 Dartmouth / 규칙 vs 학습 / 학습 방식 vs 아키텍처 / 모델 f(x; θ)와 파라미터)
 - Part 2 Tensor: 데이터를 담는 그릇 (스칼라→텐서, shape와 축의 의미 (B,N,d), 원소별 연산·broadcasting, 내적=가중합, 행렬곱과 shape 규칙, PyTorch)
 - Part 3 모델과 손실: 얼마나 틀렸나 (ŷ=wx+b, MSE, 손실 곡선)
 - Part 4 경사하강법: 틀린 만큼 고치기 (미분=변화율, gradient, 한 걸음 손계산, 학습률, 학습 루프 4단계, PyTorch 학습 루프)
-- Part 5 일반화 (train/val/test, 과적합, 학습 방식 vs 아키텍처)
+- Part 5 일반화 (train/val/test, 과적합)
 - 남은 문제: "예/아니오를 가르는 뉴런은 어떤 문제를 못 풀까?"
 
 ### Week 2 — Perceptron에서 MLP로: 직선으로 안 되는 문제는?
 - Part 1 Perceptron(1958): 분류, 계단 함수, 결정 경계=직선, 학습 규칙, AND 학습
 - Part 2 XOR(1969): AND/OR/XOR, 불가능 증명(부등식 모순), 『Perceptrons』와 AI 겨울(단일 원인 아님), 병행한 규칙 기반 AI
-- Part 3 MLP: 은닉층=새 좌표, 선형층만 쌓으면 하나로 합쳐짐, 활성화 함수, 손으로 만든 XOR 해, shape
+- Part 3 MLP: 선형층만 쌓으면 하나로 합쳐짐, 활성화 함수, 은닉층=새 좌표, 손으로 만든 XOR 해, shape
 - Part 4 역전파(1986): 책임 나누기 문제, 연쇄법칙, 계산 그래프 forward/backward, 한 번의 업데이트, 학습된 XOR·모델 부족 vs 학습 실패, 역사(1970/1974/1986), autograd
 - Part 5 확률로 답하기: Sigmoid·Softmax, Temperature, Entropy·Cross-entropy, 왜 MSE 대신 CE, Transformer 출력과의 연결
 - 남은 문제: 이미지처럼 큰 입력 / 깊은 층
@@ -84,13 +84,12 @@
 - 남은 문제: 블록 조립·학습·생성
 
 ### Week 6 — Transformer 완성: 조립·학습·생성, 그리고 이후
-- Part 1 Encoder 한 층 (FFN, Residual, LayerNorm, Post-LN vs Pre-LN, shape 유지)
-- Part 2 Decoder (정답 베끼기 문제, teacher forcing·shift, causal mask −∞, 세 mask, cross-attention, 출력 head)
-- Part 3 끝까지 따라가기 (한 샘플 shape 추적, 파라미터 수)
-- Part 4 학습 (NLL, 한 step, 원논문 조건, 병렬 학습 이유, 지표)
-- Part 5 생성 (자기회귀, 선택 정책, KV Cache, 연산량·메모리)
-- Part 6 직접 실험하기 (실습 순서, 9가지 검사, 실험 설계, 최종 프로젝트)
-- Part 7 Transformer 이후와 마무리 (Encoder-only/Decoder-only, ViT·DiT, 원형 vs 후속 변형, 여섯 질문 회고, 구술 평가 과제)
+- Part 1 Encoder 한 층 (FFN, LayerNorm, Post-LN vs Pre-LN, 잔차·Dropout·shape 유지)
+- Part 2 Decoder (정답 베끼기 문제, teacher forcing·shift·병렬 학습 이유, causal mask −∞, 세 mask, cross-attention, 출력 head, 한 샘플 shape 추적, 파라미터 수)
+- Part 3 학습 (NLL, 한 step, 지표·점검 순서, 원논문 조건)
+- Part 4 생성과 비용 (자기회귀, 선택 정책, KV Cache, 연산량·메모리)
+- Part 5 직접 실험하기 (실습 순서, 9가지 검사, 실험 설계, 최종 프로젝트)
+- Part 6 Transformer 이후와 마무리 (Encoder-only/Decoder-only, ViT·DiT, 원형 vs 후속 변형, 여섯 질문 회고, 구술 평가 과제)
 
 ## 5. 원자료 → 주차 대응 (빠짐 없음 확인용)
 
@@ -109,13 +108,13 @@
 | 11–13 Q/K/V, SDPA, Multi-head | W5 Part 2–4 |
 | 14 FFN·Residual·LN | W6 Part 1 |
 | 15 Mask·Teacher forcing | W6 Part 2 |
-| 16 Encoder/Decoder 완성 | W6 Part 2–3 |
-| 17 학습 | W6 Part 4 |
-| 18 추론·KV Cache | W6 Part 5 |
-| 19 연산량·메모리 | W6 Part 5 |
-| 20–21 실습·실험 | W6 Part 6 (각 주 과제에도 분산) |
+| 16 Encoder/Decoder 완성 | W6 Part 2 |
+| 17 학습 | W6 Part 3 |
+| 18 추론·KV Cache | W6 Part 4 |
+| 19 연산량·메모리 | W6 Part 4 |
+| 20–21 실습·실험 | W6 Part 5 (각 주 과제에도 분산) |
 | 22 멘토링 운영안 | 매 주 공통 구성·과제 설계에 반영 |
-| 23 Transformer 이후 | W6 Part 7 |
+| 23 Transformer 이후 | W6 Part 6 |
 | 24 오개념 20가지 | 각 주 "흔한 오해"에 분산 |
 | 25 개념 확인 18문항 | 각 주 셀프 체크에 분산 |
 | 26 기호 사전, 27 참고문헌 | W6 부록 + 각 주 참고 자료 |

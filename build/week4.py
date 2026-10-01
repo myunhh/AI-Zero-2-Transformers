@@ -28,6 +28,7 @@ d.roadmap(["문장을 숫자로: 토큰과 임베딩", "RNN: 순서를 따라 �
            "RNN 상태 갱신을 **손으로** 두세 단계 계산한다",
            "장기 의존성이 어려운 **세 가지 이유**를 구분한다",
            "LSTM의 c와 h, **덧셈 경로**의 역할을 설명한다",
+           "언어 모델의 **목표**(다음 토큰 확률)와 **아키텍처**를 구분한다",
            "Seq2Seq의 **고정 벡터 병목**을 설명한다"])
 
 d.glossary([["토큰", "모델이 처리하는 텍스트 조각 (단어·부분단어·글자)", "레고 블록 한 조각"],
@@ -37,32 +38,36 @@ d.glossary([["토큰", "모델이 처리하는 텍스트 조각 (단어·부분�
             ["장기 의존성", "멀리 떨어진 위치 사이의 관계", "앞 문장의 주어와 뒤의 동사"],
             ["게이트", "0~1 비중으로 정보 흐름을 조절하는 값 (계산됨)", "수도꼭지"],
             ["언어 모델", "다음 토큰의 확률을 예측하는 모델", "문장 이어 쓰기"],
-            ["Encoder–Decoder", "입력을 표현하는 부분과 출력을 생성하는 부분", "통역사의 듣기와 말하기"]])
+            ["Encoder-Decoder", "입력을 표현하는 부분과 출력을 생성하는 부분", "통역사의 듣기와 말하기"]])
 
 # ============================================================ Part 1
 d.part(1, "문장을 숫자로: 토큰과 임베딩", "“나는 학교에 간다”를 모델이 계산할 수 있는 숫자로 바꾸려면?")
 
 s = d.slide("텍스트가 벡터가 되기까지", lead="문자열 → 토큰 → 정수 ID → 학습되는 벡터. 모델이 계산하는 것은 마지막 벡터다", stage="아이디어",
-            notes="문장을 토큰으로 자르고(토큰화), 각 토큰에 사전의 번호(ID)를 붙이고, 그 번호로 임베딩 표에서 벡터를 꺼낸다. "
+            notes="문장을 tokenizer(토큰화기)로 토큰으로 자르고, 각 토큰에 사전의 번호(ID)를 붙이고, 그 번호로 임베딩 표에서 벡터를 꺼낸다. "
                   "배치 B개 문장, 길이 N이면 ID 텐서는 (B, N), 임베딩 후 (B, N, d). 1주차의 (B, N, d)가 바로 여기서 나온다. "
-                  "예시 ID 숫자는 설명용이다.")
-top, bot = s.area.top(2.0, gap=0.35)
-s.flow([{"head": "문자열", "body": "“나는 학교에 간다”"}, {"head": "토큰", "body": "[나, 는, 학교, 에, 간다]"},
-        {"head": "ID", "body": "[12, 7, 305, 9, 88]\nshape (N,) = (5,)"},
-        {"head": "벡터", "body": "E[ID] → (5, d)", "tone": "dark"}], top, body_size=15, head_size=18)
-s.table(["단계", "shape (배치 B, 길이 N)", "학습되나?"], [["토큰 ID", "(B, N) — 정수", "아니오 (tokenizer가 정함)"],
-                                                   ["임베딩 표 E", "(|V|, d)", "**예** — 파라미터"],
-                                                   ["임베딩 결과", "(B, N, d)", "E에서 꺼낸 값 (활성값)"]],
-        bot, widths=[1.6, 2.6, 2.8], size=16)
+                  "예시 ID 숫자는 설명용이다. 오늘 수업의 예문 '나는 학교에 간다'는 어절 단위 3토큰으로 통일해서 쓴다 — "
+                  "실제 tokenizer는 더 잘게 자른다는 점은 9쪽에서 다룬다.")
+top, bot = s.area.top(2.3, gap=0.35)
+s.flow([{"head": "문자열", "body": "“나는 학교에 간다”"}, {"head": "토큰", "body": "[나는, 학교에, 간다]"},
+        {"head": "ID", "body": "[12, 305, 88]\nshape (N,) = (3,)"},
+        {"head": "벡터", "body": "E[ID] → (3, d)", "tone": "dark"}], top, body_size=15, head_size=18)
+gt = s.table(["단계", "shape (배치 B, 길이 N)", "학습되나?"], [["토큰 ID", "(B, N) — 정수", "아니오 — tokenizer (토큰화기)가 정함"],
+                                                        ["임베딩 표 E", "(|V|, d)", "**예** — 파라미터"],
+                                                        ["임베딩 결과", "(B, N, d)", "E에서 꺼낸 값 (활성값)"]],
+             bot, widths=[1.6, 2.6, 3.2], size=17)
+s.textbox("(여기서는 어절 단위 — 실제 tokenizer는 더 잘게 자른다, 9쪽)",
+          Box(bot.x, (gt.top + gt.height) / 914400 + 0.12, bot.w, 0.45), size=15, color=GRAY, gap=0)
 
 s = d.slide("번호는 의미가 아니다", lead="ID 100이 ID 10보다 ‘열 배’인 것은 아니다 — ID는 표에서 벡터를 꺼내는 주소", stage="문제",
             notes="ID를 그대로 숫자로 계산에 넣으면 '305번 학교가 12번 나보다 크다' 같은 엉뚱한 관계가 생긴다. "
                   "one-hot: 어휘 크기 |V|의 벡터에서 자기 위치만 1. one-hot 행벡터에 임베딩 표 E(|V|, d)를 곱하면 E의 해당 행이 그대로 나온다 = 행 lookup. "
                   "그래서 실제로는 큰 one-hot을 만들지 않고 행을 바로 꺼낸다. E의 값은 학습되는 파라미터이고, 학습을 통해 비슷한 쓰임의 토큰이 비슷한 벡터를 갖게 된다.")
-L, R = s.cols(0.6)
+L, R = s.cols(0.66)
 s.image(A("week4/onehot_lookup.png"), L)
 s.bullets(["ID를 그대로 쓰면 크기 관계가 **엉터리**", "**one-hot**: 자기 자리만 1인 벡터", "one-hot @ E = E의 **그 행**",
-           ("수학적으로 같다 → 실제로는 행을 바로 꺼냄 (lookup)", 1), "E (|V|, d)는 **학습되는 파라미터**"], R)
+           ("수학적으로 같다 → 실제로는 행을 바로 꺼냄 (lookup)", 1), "E (|V|, d)는 **학습되는 파라미터**",
+           ("그림은 설명용 작은 어휘 (|V| = 5)", 1)], R)
 
 s = d.slide("단어와 토큰은 항상 같지 않다", lead="어떤 단위로 자르느냐는 어휘 크기와 시퀀스 길이 사이의 절충", stage="아이디어",
             notes="단어 단위는 직관적이지만 어휘가 매우 커지고 처음 보는 단어(희귀어)를 다루기 어렵다. 글자/byte 단위는 어휘가 작지만 시퀀스가 길어진다. "
@@ -81,7 +86,7 @@ s = d.slide("PyTorch: nn.Embedding", lead="(B, N) 정수 → (B, N, d) 벡터. �
             notes="nn.Embedding(num_embeddings=|V|, embedding_dim=d). 어휘 10,000개, d=8이면 파라미터 80,000개. "
                   "입력은 정수 ID 텐서 (B, N), 출력은 (B, N, d). 같은 ID는 항상 같은 벡터가 나온다(아직 문맥 없음). "
                   "문맥에 따라 표현이 달라지는 것은 이후 계산(RNN, Transformer 블록)의 몫이다 — Part 5.")
-L, R = s.cols(0.58)
+L, R = s.cols(0.6)
 s.code("import torch, torch.nn as nn\n"
        "emb = nn.Embedding(10000, 8)      # |V| = 10000, d = 8\n"
        "ids = torch.tensor([[12, 7, 305, 9, 88],\n"
@@ -89,11 +94,14 @@ s.code("import torch, torch.nn as nn\n"
        "x = emb(ids)\n"
        "print(ids.shape, x.shape)  # (2, 5)  (2, 5, 8)\n"
        "print(emb.weight.shape)    # (10000, 8) -> 80,000개\n"
-       "print(torch.equal(x[0, 1], emb.weight[7]))  # True", L, size=13)
+       "print(torch.equal(x[0, 1], emb.weight[7]))  # True", L, size=15)
 cb = s.last_code_box
-s.callout("짧은 문장은 PAD 토큰으로 길이를 맞춘다 (1주차 batch 그림).", Box(L.x, cb.b + 0.25, L.w, 0.7), kind="tip", size=15)
+s.callout("짧은 문장은 PAD 토큰으로 길이를 맞춘다 (1주차 batch 그림).", Box(L.x, cb.b + 0.25, L.w, 0.7), kind="tip", size=16)
+tb = s.last_callout_box
+s.flow([{"head": "ids  (B, N)"}, {"head": "nn.Embedding", "tone": "dark"}, {"head": "x  (B, N, d)"}],
+       Box(L.x, tb.b + 0.3, L.w, 0.7), head_size=16, gap=0.5)
 s.bullets(["`emb(ids)` = 표에서 **행 꺼내기**", "`x[0, 1]` = `emb.weight[7]`", "파라미터 = |V| × d",
-           "같은 ID → 항상 **같은 벡터**", ("문맥 반영은 이후 계산의 몫", 1)], R)
+           "같은 ID → 항상 **같은 벡터**", ("문맥 반영은 이후 계산의 몫", 1)], R, size=18)
 
 # ============================================================ Part 2
 d.part(2, "RNN: 순서를 따라 상태 전달", "1986 · 1990 — 길이가 제각각이고 순서가 의미를 바꾸는 입력을 어떻게 처리할까?")
@@ -102,12 +110,15 @@ s = d.slide("MLP나 CNN으로 문장을 읽으면?", lead="같은 단어라도 �
             notes="'개가 사람을 물었다'와 '사람이 개를 물었다'는 같은 토큰들로 이루어졌지만 뜻이 정반대다. 토큰 벡터를 더하거나 평균 내면 둘이 구분되지 않는다. "
                   "MLP는 입력 크기가 고정이라 길이가 다른 문장을 그대로 넣을 수 없다. CNN은 고정된 창 크기만큼만 본다 — 먼 단어의 관계를 보려면 층을 많이 쌓아야 한다. "
                   "필요한 것: 길이와 무관한 같은 규칙으로, 순서대로 읽으며 지금까지의 내용을 기억하는 구조.")
-rest = s.cards([{"head": "순서가 의미를 바꾼다", "body": ["“개가 사람을 물었다”", "“사람이 개를 물었다”", "→ 토큰 집합은 같다"]},
-                {"head": "길이가 제각각", "body": ["“안녕” (2토큰)", "“오늘 날씨가 정말 좋네요” (6토큰)", "→ MLP는 입력 크기 고정"]},
-                {"head": "먼 단어의 의존", "body": ["“그 **책**은 … (20단어) … **재미있었다**”", "→ CNN은 고정된 창만 본다"],
-                 "tone": "accent"}], cols=3, body_size=16, head_size=18)
+top, bot = s.area.top(3.0, gap=0.3)
+s.cards([{"head": "순서가 의미를 바꾼다", "body": ["“개가 사람을 물었다”", "“사람이 개를 물었다”", "→ 토큰 집합은 같다"]},
+         {"head": "길이가 제각각", "body": ["“안녕” (2토큰)", "“오늘 날씨가 정말 좋네요” (6토큰)", "→ MLP는 입력 크기 고정"]},
+         {"head": "먼 단어의 의존", "body": ["“그 **책**은 … (20단어) … **재미있었다**”", "→ CNN은 고정된 창만 본다"],
+          "tone": "accent"}], top, cols=3, body_size=18, head_size=20, fit_h=False)
+s.callout("토큰 벡터를 **더하거나 평균** 내면 “개가 사람을” = “사람이 개를” — 순서 정보가 사라진다 (bag of words)",
+          Box(bot.x, bot.y, bot.w, 0.7), kind="warn", size=16)
 s.callout("필요한 것: 길이와 무관한 **같은 규칙**으로, **순서대로** 읽으며 지금까지를 **기억**하는 구조",
-          Box(rest.x, rest.y + 0.1, rest.w, 0.9), kind="key", size=17)
+          Box(bot.x, s.last_callout_box.b + 0.25, bot.w, 0.9), kind="key", size=18)
 
 s = d.slide("아이디어: 같은 셀을 반복하며 상태를 넘긴다", lead="각 시점에서 (현재 입력, 이전 상태) → 새 상태. 같은 가중치를 모든 시점에 재사용",
             stage="아이디어",
@@ -127,9 +138,10 @@ s = d.slide("RNN 상태 갱신을 손으로", lead="h_t = tanh(x_t W_x + h_(t−
 top, bot = s.area.top(1.0, gap=0.3)
 s.formula("h_t = tanh( x_t · W_x  +  h_(t−1) · W_h  +  b )", top, size=24)
 L, R = bot.cols(0.55, gap=0.4)
-s.table(["t", "입력 x_t", "계산", "h_t"], [["1", "1", "tanh(1·1 + 0.5·0)", "**0.762**"], ["2", "0", "tanh(0 + 0.5·0.762)", "**0.363**"],
-                                        ["3", "0", "tanh(0 + 0.5·0.363)", "**0.180**"]], Box(L.x, L.y, L.w, 2.0), size=15, align="cccc")
-s.bullets(["설정: W_x = 1, W_h = 0.5, b = 0, h_0 = 0"], Box(L.x, L.y + 2.2, L.w, 0.8), size=15)
+gt = s.table(["t", "입력 x_t", "계산", "h_t"], [["1", "1", "tanh(1·1 + 0.5·0)", "**0.762**"], ["2", "0", "tanh(0 + 0.5·0.762)", "**0.363**"],
+                                             ["3", "0", "tanh(0 + 0.5·0.363)", "**0.180**"]], Box(L.x, L.y, L.w, 2.8), size=17,
+             widths=[0.7, 1.3, 2.6, 1.2], align="cccc")
+s.bullets(["설정: W_x = 1, W_h = 0.5, b = 0, h_0 = 0"], Box(L.x, (gt.top + gt.height) / 914400 + 0.2, L.w, 0.8), size=16)
 s.bullets(["첫 입력의 흔적이 **점점 옅어진다**", "W_h를 키우면 오래 남지만", ("너무 크면 값·기울기가 **폭주**", 1),
            "→ 먼 정보를 다루기 어려운 이유 (Part 3)"], R)
 
@@ -137,7 +149,7 @@ s = d.slide("PyTorch: nn.RNN의 shape", lead="(B, N, d) 입력 → 모든 시점
             notes="nn.RNN(input_size=d, hidden_size=d_h, batch_first=True). 입력 (2, 5, 8) → output (2, 5, 16): 모든 시점의 h, h_n (1, 2, 16): 마지막 시점의 h(층 수 1). "
                   "파라미터: W_x (8×16) + W_h (16×16) + 편향 2개(16+16) = 416. 길이 N과 무관하다. "
                   "LSTM은 게이트 4개분이라 1,664개(4배).")
-L, R = s.cols(0.58)
+L, R = s.cols(0.6)
 s.code("import torch, torch.nn as nn\n"
        "rnn = nn.RNN(input_size=8, hidden_size=16,\n"
        "             batch_first=True)\n"
@@ -145,11 +157,14 @@ s.code("import torch, torch.nn as nn\n"
        "out, h_n = rnn(x)\n"
        "print(out.shape)   # (2, 5, 16)  모든 시점의 h\n"
        "print(h_n.shape)   # (1, 2, 16)  마지막 h\n"
-       "print(sum(p.numel() for p in rnn.parameters()))  # 416", L, size=13)
+       "print(sum(p.numel() for p in rnn.parameters()))  # 416", L, size=15)
 cb = s.last_code_box
-s.callout("`out[:, -1]`와 `h_n[0]`은 같은 값이다 (한 층, 단방향) — 직접 확인해 보기", Box(L.x, cb.b + 0.25, L.w, 0.8), kind="tip", size=15)
+s.callout("`out[:, -1]`와 `h_n[0]`은 같은 값이다 (한 층, 단방향) — 직접 확인해 보기", Box(L.x, cb.b + 0.25, L.w, 0.8), kind="tip", size=16)
+tb = s.last_callout_box
+s.flow([{"head": "x  (B, N, d)"}, {"head": "nn.RNN", "tone": "dark"}, {"head": "out  (B, N, d_h)"}],
+       Box(L.x, tb.b + 0.3, L.w, 0.7), head_size=16, gap=0.5)
 s.bullets(["`out`: 시점마다의 h → 문맥 표현", "`h_n`: 마지막 h → 문장 **요약**", "파라미터 416 = 8·16 + 16·16 + 16 + 16",
-           ("길이 N과 **무관**", 1), "nn.LSTM은 4배: 1,664"], R)
+           ("길이 N과 **무관**", 1), "nn.LSTM은 4배: 1,664"], R, size=18)
 
 # ============================================================ Part 3
 d.part(3, "장기 의존성: 왜 먼 정보를 잃나", "1991 · 1994 — “그 책은 … 재미있었다”, 멀리 떨어진 관계도 학습할 수 있을까?")
@@ -160,7 +175,8 @@ s = d.slide("시간을 거슬러 기울기가 곱해진다", lead="k단계 전�
                   "Hochreiter(1991, 석사 논문)와 Bengio, Simard, Frasconi(1994)가 이 어려움을 분석했다. 원자료 주의: '정보가 오래되면 사라진다'는 비유로 끝내지 말고, 행렬 곱과 활성화 미분이 반복된다는 계산으로 이해한다.")
 L, R = s.cols(0.58)
 s.image(A("week4/grad_decay.png"), L)
-s.bullets(["펼친 RNN = 시간 방향으로 **아주 깊은 망**", "인자 0.9 → 50단계: **0.005** (소실)", "인자 1.1 → 50단계: **117** (폭주)",
+s.bullets(["펼친 RNN = 시간 방향으로 **아주 깊은 망**", ("매 시점 곱해지는 인자 ≈ W_h × tanh′(…)", 1),
+           "인자 0.9 → 50단계: **0.005** (소실)", "인자 1.1 → 50단계: **117** (폭주)",
            "3주차 깊이 문제가 **시간 방향**에서 재등장", "Hochreiter (1991), Bengio et al. (1994)", ("비유가 아니라 **곱셈의 반복**으로 이해", 1)], R)
 
 s = d.slide("장기 의존성이 어려운 이유들", lead="학습 신호 · 정보 표현 · 계산 의존성 — 서로 다른 문제이고, 해결 방향도 다르다", stage="정리",
@@ -208,35 +224,39 @@ s = d.slide("셀 갱신을 손으로", lead="c_t = f ⊙ c_(t−1) + i ⊙ g,   
                   "⊙는 원소별 곱. 핵심: c_t는 c_(t−1)에 f를 곱하고 무언가를 '더하는' 방식이라, f가 1에 가까우면 기억과 기울기가 오래 유지된다(∂c_t/∂c_(t−1) = f).")
 top, bot = s.area.top(1.0, gap=0.3)
 s.formula("c_t = f ⊙ c_(t−1) + i ⊙ g        h_t = o ⊙ tanh(c_t)", top, size=22)
-L, R = bot.cols(0.55, gap=0.4)
+L, R = bot.cols(0.6, gap=0.4)
 s.table(["", "f = 0.9 (보존)", "f = 0.5"], [["c_(t−1)", "2.0", "2.0"], ["i, g", "0.1, 0.5", "0.1, 0.5"],
-                                          ["c_t = f·c + i·g", "1.8 + 0.05 = **1.85**", "1.0 + 0.05 = **1.05**"],
-                                          ["h_t = 0.5·tanh(c_t)", "**0.476**", "0.391"]], L, size=15, align="lcc", highlight=[2])
-s.bullets(["f ≈ 1이면 기억이 **거의 그대로**", "∂c_t / ∂c_(t−1) = **f**", ("f ≈ 1 → 기울기도 오래 유지", 1),
+                                          ["c_t = f ⊙ c_(t−1) + i ⊙ g", "1.8 + 0.05 = **1.85**", "1.0 + 0.05 = **1.05**"],
+                                          ["h_t = 0.5·tanh(c_t)", "**0.476**", "0.391"]], L, size=15, align="lcc", highlight=[2],
+        widths=[3.2, 1.8, 1.8])
+s.bullets(["f ≈ 1이면 기억이 **거의 그대로**", "c_(t−1)이 조금 변하면 c_t도 **f배**만큼 변한다 (= 기울기가 f)",
+           ("f ≈ 1 → 기울기도 오래 유지", 1),
            "RNN은 매번 W_h와 tanh′를 곱했다", "c는 **곱하고 더할 뿐** → 긴 경로에 유리"], R)
 
 s = d.slide("LSTM이 해결한 것과 남은 것", lead="장기 의존성을 ‘학습하기 쉽게’ 만들었다 — 완벽한 기억도, 병렬 계산도 아니다", stage="검증",
             notes="LSTM은 ① 학습 신호 문제를 크게 줄였고 1997~2014년 음성 인식, 번역 등에서 표준이 되었다. "
                   "하지만 ② 정보 표현: 여전히 고정 크기 c, h에 담아야 한다. ③ 계산 의존성: h_t는 h_(t−1)이 있어야 계산된다 — 긴 시퀀스를 병렬로 학습하기 어렵다. "
                   "원자료: LSTM은 장기 의존성을 학습하기 위한 설계이지, 모든 긴 문맥을 완벽하게 기억한다는 보장이 아니다.")
-rest = s.cards([{"head": "해결한 것", "bullets": True,
-                 "body": ["① **학습 신호**: 덧셈 기억 경로로 긴 의존성 학습이 쉬워짐", "음성 인식 · 번역 등에서 오랫동안 표준"]},
-                {"head": "남은 것", "tone": "accent", "bullets": True,
-                 "body": ["② **고정 크기** 상태 c, h에 모든 것을 담아야 한다", "③ h_t는 h_(t−1)이 필요 — **순차 계산**",
-                          "완벽한 기억을 **보장하지 않는다**"]}], cols=2, body_size=17, head_size=19)
+top, bot = s.area.top(3.0, gap=0.3)
+s.cards([{"head": "해결한 것", "bullets": True,
+          "body": ["① **학습 신호**: 덧셈 기억 경로로 긴 의존성 학습이 쉬워짐", "음성 인식 · 번역 등에서 오랫동안 표준"]},
+         {"head": "남은 것", "tone": "accent", "bullets": True,
+          "body": ["② **고정 크기** 상태 c, h에 모든 것을 담아야 한다", "③ h_t는 h_(t−1)이 필요 — **순차 계산**",
+                   "완벽한 기억을 **보장하지 않는다**"]}], top, cols=2, body_size=19, head_size=20, fit_h=False)
 s.callout("GRU (Cho et al., 2014)는 게이트를 2개로 줄인 변형 — 같은 남은 문제를 공유한다.",
-          Box(rest.x, rest.y + 0.1, rest.w, 0.8), kind="tip", size=16)
+          Box(bot.x, bot.y, bot.w, 0.8), kind="tip", size=17)
 
-s = d.slide("사고실험: 맨 앞 숫자 기억하기", lead="길이를 5 → 10 → 20 → 40으로 늘리며, 어디서부터 어려워지는지 측정한다", stage="검증",
-            notes="원자료의 사고실험: 문장 맨 앞의 숫자를 끝에서 다시 출력하는 과제. 입력 길이를 늘리며 학습과 일반화가 어려워지는 지점을 찾는다. "
-                  "작은 RNN과 LSTM의 크기·학습량을 같게 통제하고, 길이에 따른 정확도 곡선을 기록한다. "
+s = d.slide("검증 실험 설계: 맨 앞 숫자 기억하기", lead="길이를 5 → 10 → 20 → 40으로 늘리며, 어디서부터 어려워지는지 측정한다", stage="검증",
+            notes="원자료의 사고실험을 실험 설계로: 문장 맨 앞의 숫자를 끝에서 다시 출력하는 과제. 입력 길이를 늘리며 학습과 일반화가 어려워지는 지점을 찾는다. "
+                  "작은 RNN과 LSTM의 크기·학습량을 같게 통제하고, 길이에 따른 정확도 곡선을 기록한다. 과제 1(복사·반전 과제)에서 학생이 직접 해 본다. "
                   "중요: 'Transformer가 항상 이긴다'는 결론을 미리 정하지 않는다. 실험 설계의 태도를 연습하는 과제다.")
 top, bot = s.area.top(1.9, gap=0.35)
 s.flow([{"head": "입력", "body": "7, a, c, b, …, d\n(길이 N)"}, {"head": "모델", "body": "RNN / LSTM\n(크기·학습량 동일)"},
         {"head": "출력", "body": "마지막에 **7**을 다시 출력"}, {"head": "기록", "body": "N = 5, 10, 20, 40별 정확도", "tone": "dark"}],
        top, body_size=15, head_size=17)
 s.bullets(["**통제**: 모델 크기, 학습 step, 데이터 수를 같게", "**측정**: 길이별 정확도 곡선 — 어디서 무너지나?",
-           "RNN과 LSTM의 곡선을 비교하고 **이유를 설명**", "==주의== ‘새 모델이 항상 이긴다’는 결론을 미리 정하지 않는다"], bot)
+           "RNN과 LSTM의 곡선을 비교하고 **이유를 설명**", "==주의== ‘새 모델이 항상 이긴다’는 결론을 미리 정하지 않는다",
+           "**과제 1**에서 직접 해 본다 (복사·반전 과제)"], bot)
 
 # ============================================================ Part 5
 d.part(5, "단어의 의미를 학습하기", "2003 · 2013 — 좋은 단어 벡터는 어디서 오나? 다음 단어를 맞히다 보면")
@@ -265,7 +285,7 @@ s.flow([{"head": "앞 단어들", "body": "“나는 학교에”"}, {"head": "�
         {"head": "MLP", "body": "은닉층 (2주차)"}, {"head": "Softmax", "body": "다음 단어 확률 |V|개", "tone": "dark"}],
        top, body_size=15, head_size=17)
 s.bullets(["Bengio et al. (2003) ‘A Neural Probabilistic Language Model’", "임베딩 E도 **역전파로 함께** 학습된다",
-           "비슷한 문맥의 단어 → 비슷한 벡터 (**분산 표현**)", "==주의== 임베딩은 Word2Vec(2013)에서 **처음 나온 것이 아니다**"], bot)
+           "비슷한 문맥의 단어 → 비슷한 벡터 (**분산 표현**)", "임베딩 표 E = Part 1의 **nn.Embedding 그 자체**"], bot)
 
 s = d.slide("2013: Word2Vec", lead="주변 문맥으로 단어를(CBOW), 단어로 주변 문맥을(Skip-gram) — 표현 학습을 대규모로 효율적으로", stage="역사",
             notes="Mikolov et al.(2013). 목표를 단순화해 수십억 단어 규모에서 빠르게 단어 벡터를 학습했다. CBOW는 주변 단어로 가운데 단어를, Skip-gram은 가운데 단어로 주변 단어를 예측. "
@@ -283,13 +303,14 @@ s = d.slide("정적 표현 vs 문맥 표현", lead="임베딩 직후 ‘배’�
             notes="기본 임베딩은 같은 토큰에 항상 같은 벡터를 준다(정적). 'river bank'와 'bank account', '배를 먹었다'와 '배를 탔다'의 뜻이 달라지려면 "
                   "주변 입력을 참조한 뒤의 표현이 필요하다. RNN에서는 h_t가, Transformer에서는 이후 블록들의 출력이 그 역할을 한다. "
                   "원자료: '단어 의미가 모두 임베딩 표 안에 저장된다'보다 'lookup과 문맥 계산이 함께 표현을 만든다'가 더 정확하다.")
-rest = s.cards([{"head": "정적 표현 (임베딩 lookup 직후)", "tone": "plain", "bullets": True,
-                 "body": ["“배를 먹었다” 의 배 = E[배]", "“배를 탔다” 의 배 = E[배]", "→ **같은 벡터**"]},
-                {"head": "문맥 표현 (문맥 계산 이후)", "bullets": True,
-                 "body": ["RNN: h_t가 앞 내용을 반영", "Transformer: 이후 블록이 주변을 참조", "→ **다른 벡터**"]}],
-               cols=2, body_size=17, head_size=18)
+top, bot = s.area.top(3.0, gap=0.3)
+s.cards([{"head": "정적 표현 (임베딩 lookup 직후)", "tone": "plain", "bullets": True,
+          "body": ["“배를 먹었다” 의 배 = E[배]", "“배를 탔다” 의 배 = E[배]", "→ **같은 벡터**"]},
+         {"head": "문맥 표현 (문맥 계산 이후)", "bullets": True,
+          "body": ["RNN: h_t가 앞 내용을 반영", "Transformer: 이후 블록이 주변을 참조", "→ **다른 벡터**"]}],
+        top, cols=2, body_size=19, head_size=20, fit_h=False)
 s.callout("의미는 임베딩 표에 ‘저장’된 것이 아니라, **lookup + 문맥 계산**이 함께 만든다.",
-          Box(rest.x, rest.y + 0.1, rest.w, 0.8), kind="key", size=17)
+          Box(bot.x, bot.y, bot.w, 0.8), kind="key", size=18)
 
 # ============================================================ Part 6
 d.part(6, "Seq2Seq: 길이가 다른 입력과 출력", "2014 — “I am a student” → “나는 학생이다”, 길이가 다르면?")
@@ -298,47 +319,52 @@ s = d.slide("번역: 입력과 출력의 길이가 다르다", lead="RNN은 입�
             notes="번역, 요약, 질의응답은 입력 길이 S와 출력 길이 T가 다르고, 어순도 다르다. "
                   "'I am a student'(S=4) → '나는 학생 이다'(T=3, 토큰화 예시). RNN처럼 시점마다 하나씩 출력하면 길이와 어순을 맞출 수 없다. "
                   "해결 아이디어: 먼저 입력 전체를 다 읽고(encode), 그 다음 출력을 한 토큰씩 생성(decode)한다.")
-rest = s.cards([{"head": "입력 (영어, S = 4)", "tone": "plain", "body": "I · am · a · student"},
-                {"head": "출력 (한국어, T = 3)", "body": "나는 · 학생 · 이다"},
-                {"head": "어려움", "tone": "accent", "body": ["길이가 다르다 (S ≠ T)", "어순이 다르다", "시점마다 1:1 출력 불가"]}],
-               cols=3, body_size=17, head_size=18)
+top, bot = s.area.top(3.0, gap=0.3)
+s.cards([{"head": "입력 (영어, S = 4)", "tone": "plain", "body": ["I · am · a · student", "(어절 단위 토큰)"]},
+         {"head": "출력 (한국어, T = 3)", "body": ["나는 · 학생 · 이다", "(+ 끝을 알리는 EOS)"]},
+         {"head": "어려움", "tone": "accent", "body": ["길이가 다르다 (S ≠ T)", "어순이 다르다", "시점마다 1:1 출력 불가"]}],
+        top, cols=3, body_size=19, head_size=20, fit_h=False)
 s.callout("아이디어: 입력을 **끝까지 다 읽고**(Encoder), 그 다음 출력을 **한 토큰씩** 생성(Decoder)",
-          Box(rest.x, rest.y + 0.1, rest.w, 0.9), kind="key", size=17)
+          Box(bot.x, bot.y, bot.w, 0.9), kind="key", size=18)
 
 s = d.slide("Encoder → 문맥 벡터 c → Decoder", lead="Encoder가 입력을 고정 길이 벡터 c로 요약, Decoder가 c와 이전 출력으로 다음 토큰을 만든다",
             stage="아이디어",
             notes="Encoder RNN이 입력을 끝까지 읽은 마지막 상태를 문맥 벡터 c로 쓴다. Decoder RNN은 c에서 시작해 BOS(시작) 토큰을 받고 첫 단어를 예측, "
                   "그 단어를 다음 입력으로 넣어 다음 단어를 예측… EOS(끝) 토큰이 나오면 멈춘다 — 그래서 출력 길이를 스스로 정한다. "
-                  "원자료: Encoder–Decoder는 특정 신경망 종류가 아니라 '입력 표현'과 '출력 생성'의 역할 분담이다. Transformer도 이 구조를 쓴다.")
-top, bot = s.area.top(2.9, gap=0.3)
+                  "원자료: Encoder-Decoder는 특정 신경망 종류가 아니라 '입력 표현'과 '출력 생성'의 역할 분담이다. Transformer도 이 구조를 쓴다.")
+top, bot = s.area.top(3.3, gap=0.3)
 s.image(A("week4/seq2seq.png"), top)
-s.bullets(["Encoder: 입력 S개를 읽고 마지막 상태 = **c**", "Decoder: c + 이전 출력 → 다음 토큰, **EOS**가 나오면 멈춤",
-           "Encoder–Decoder는 신경망 종류가 아니라 **역할 분담** — Transformer도 이 구조"], bot, size=16)
+s.bullets(["Encoder: 입력 S개를 순서대로 읽고 마지막 상태 = **c** (고정 길이)",
+           "Decoder: c + 이전 출력(직전 출력 → 다음 입력) → 다음 토큰, **EOS**가 나오면 멈춤 — 출력 길이를 스스로 정한다",
+           "Encoder-Decoder는 신경망 종류가 아니라 **역할 분담** — Transformer도 이 구조"], bot, size=16)
 
-s = d.slide("학습 목표와 2014년의 두 논문", lead="p(y | x) = Π p(y_t | y_<t, c) — 앞에서 본 조건부 확률의 곱에 입력 조건 c를 더했다", stage="계산",
+s = d.slide("학습 목표와 2014년의 논문들", lead="p(y | x) = Π p(y_t | y_<t, c) — 앞에서 본 조건부 확률의 곱에 입력 조건 c를 더했다", stage="계산",
             notes="학습 목표: 정답 번역의 각 토큰에 대한 −log 확률의 합(cross-entropy). 학습 때는 Decoder 입력에 모델 예측 대신 정답의 이전 토큰을 넣는다(teacher forcing, 6주차 자세히). "
-                  "Sutskever, Vinyals, Le(2014): 4층 LSTM Encoder–Decoder, 입력 문장을 뒤집어 넣는 요령으로 성능 향상, WMT'14 영→프 BLEU 34.8(앙상블), 기존 SMT 후보 재정렬 시 36.5. "
-                  "Cho et al.(2014): RNN Encoder–Decoder와 GRU 제안. 원자료: Bahdanau Attention 논문도 2014년 거의 같은 시기에 공개 — 수업 순서가 긴 역사적 간격을 뜻하지 않는다.")
+                  "Sutskever, Vinyals, Le(2014): 4층 LSTM Encoder-Decoder, 입력 문장을 뒤집어 넣는 요령으로 성능 향상, WMT'14 영→프 BLEU 34.8(앙상블), 기존 SMT 후보 재정렬 시 36.5. "
+                  "Cho et al.(2014): RNN Encoder-Decoder와 GRU 제안. 원자료: Bahdanau Attention 논문도 2014년 거의 같은 시기에 공개 — 수업 순서가 긴 역사적 간격을 뜻하지 않는다.")
 top, bot = s.area.top(1.0, gap=0.3)
 s.formula("p(y | x) = Π_t  p(y_t | y_<t, c)", top, size=26)
 s.cards([{"head": "Sutskever, Vinyals & Le (2014)", "bullets": True,
-          "body": ["4층 LSTM Encoder–Decoder", "입력 문장을 **뒤집어** 넣는 요령", "WMT’14 영→프 BLEU **34.8** (앙상블)"]},
+          "body": ["4층 LSTM Encoder-Decoder", "입력 문장을 **뒤집어** 넣는 요령", "WMT’14 영→프 BLEU **34.8** (앙상블)"]},
          {"head": "Cho et al. (2014)", "bullets": True,
-          "body": ["RNN Encoder–Decoder", "**GRU** 제안 (게이트 2개)", "긴 문장에서 성능 저하 관찰"]},
-         {"head": "같은 해 (→ 5주차)", "tone": "accent", "bullets": True,
+          "body": ["RNN Encoder-Decoder", "**GRU** 제안 (게이트 2개)", "긴 문장에서 성능 저하 관찰"]},
+         {"head": "같은 해의 세 번째 논문 (→ 5주차)", "tone": "accent", "bullets": True,
           "body": ["Bahdanau et al. (2014) Attention", "거의 **같은 시기**에 공개", "수업 순서 ≠ 긴 시간 간격"]}], bot, cols=3,
-        body_size=15, head_size=16)
+        body_size=16, head_size=17)
+s.callout("학습: 정답 번역의 각 토큰에 대한 −log 확률의 합 (cross-entropy). 학습 때 Decoder 입력에는 모델 예측 대신 "
+          "**정답의 이전 토큰**을 넣는다 (teacher forcing, 6주차)", Box(s.area.x, s.area.b - 1.0, s.area.w, 0.85), kind="tip", size=16)
 
 s = d.slide("병목: 질문이 달라도 요약본은 하나", lead="출력 위치마다 필요한 입력 정보가 다른데, Decoder는 고정 길이 c 하나만 받는다", stage="문제",
             notes="'나는'을 쓸 때는 'I'가, '학생'을 쓸 때는 'student'가 필요하다. 그런데 Decoder가 받는 것은 문장 전체를 압축한 c 하나뿐이다. "
                   "문장이 10단어든 50단어든 c의 크기는 같다 — 긴 문장일수록 정보를 잃는다(Cho et al. 2014의 관찰). "
                   "Part 3 표의 ② '정보 표현' 문제가 번역에서 가장 선명하게 드러난 것. 다음 주 질문: Encoder의 위치별 표현 h_1…h_S를 버리지 말고, 필요할 때마다 다시 찾아보면?")
-rest = s.cards([{"head": "“나는”을 쓸 때", "body": ["필요한 입력: **I**"]}, {"head": "“학생”을 쓸 때", "body": ["필요한 입력: **student**"]},
-                {"head": "“이다”를 쓸 때", "body": ["필요한 입력: **am**"]},
-                {"head": "하지만 받는 것은", "tone": "accent", "body": ["항상 **같은 c 하나**", "문장이 길어도 크기 고정"]}],
-               cols=4, body_size=17, head_size=17)
+top, bot = s.area.top(3.0, gap=0.3)
+s.cards([{"head": "“나는”을 쓸 때", "body": ["필요한 입력: **I**", "(문장 맨 앞)"]},
+         {"head": "“학생이다”를 쓸 때", "body": ["필요한 입력: **am a student**", "(문장 뒤쪽)"]},
+         {"head": "하지만 받는 것은", "tone": "accent", "body": ["항상 **같은 c 하나**", "문장이 길어도 크기 고정"]}],
+        top, cols=3, body_size=19, head_size=20, fit_h=False)
 s.callout("질문: Encoder의 위치별 표현 h_1 … h_S를 **버리지 말고**, 출력할 때마다 **필요한 곳을 다시 찾아보면?**",
-          Box(rest.x, rest.y + 0.15, rest.w, 1.0), kind="key", size=18)
+          Box(bot.x, bot.y, bot.w, 1.0), kind="key", size=18)
 
 # ============================================================ 마무리
 d.summary(["토큰 ID는 **주소**, 임베딩 E(|V|, d)가 학습되는 표 — (B, N) → (B, N, d)",
@@ -348,7 +374,7 @@ d.summary(["토큰 ID는 **주소**, 임베딩 E(|V|, d)가 학습되는 표 —
            "언어 모델 = 다음 토큰 확률의 곱, 임베딩은 이 목표로 **함께 학습** (2003, 2013)",
            "Seq2Seq: 길이가 다른 입출력 — 하지만 **고정 벡터 c 하나**가 병목"])
 
-d.quiz("셀프 체크", [("LSTM 이후에도 남아 있는 핵심 제약은? (원자료 개념 확인 03)", "h_t가 h_(t−1)에 의존하는 순차 계산, 고정 크기 상태에 정보를 담아야 하는 점"),
+d.quiz("셀프 체크", [("LSTM 이후에도 남아 있는 핵심 제약은?", "h_t가 h_(t−1)에 의존하는 순차 계산, 고정 크기 상태에 정보를 담아야 하는 점 (원자료 개념 확인 03)"),
                    ("어휘 30,000, d = 512인 임베딩 표의 파라미터 수와, ids (4, 20)의 출력 shape은?", "15,360,000개, (4, 20, 512)"),
                    ("W_h = 0.5인 1차원 RNN에서 첫 입력의 흔적이 줄어드는 이유는?", "매 시점 0.5와 tanh를 거치며 곱해지므로 점점 작아진다"),
                    ("LSTM에서 f = 1, i = 0이면 c_t는?", "c_(t−1) 그대로 — 기억을 완전히 보존"),
@@ -361,16 +387,16 @@ d.misconceptions([["“토큰 ID가 크면 의미도 크다”", "ID는 **lookup
                   ["“다음 토큰 확률 분해는 RNN의 성질이다”", "확률 모델의 **목표**다. Transformer도 같은 목표를 쓴다"],
                   ["“1997 LSTM에 forget gate가 있었다”", "forget gate는 2000년 Gers et al.이 도입한 후속 형태"]])
 
-d.homework([("복사 · 반전 과제 설계 (원자료 운영안 5회차)", "입력 수열을 그대로/거꾸로 출력하는 데이터셋을 만들고, 길이 5·10·20에서 작은 RNN과 LSTM의 정확도를 비교한다."),
+d.homework([("복사 · 반전 과제 설계 (24쪽 검증 실험)", "입력 수열을 그대로/거꾸로 출력하는 데이터셋을 만들고, 길이 5·10·20에서 작은 RNN과 LSTM의 정확도를 비교한다."),
             ("RNN 손계산", "W_x = 1, W_h = 0.9, 입력 (1, 0, 0, 0, 0)에서 h_1…h_5를 계산하고 W_h = 0.5일 때와 비교한다."),
-            ("토큰화 비교", "한국어 문장 하나를 글자 단위와 공개 tokenizer 하나로 나눠 보고 토큰 수를 비교한다 (ID 숫자로 품질을 판단하지 않기).")],
-           notes="원자료 주의: 실제 tokenizer와 교육용 문자 tokenizer를 명확히 구분해 표시한다.")
+            ("tokenizer 비교", "한국어 문장 하나를 글자 단위와 공개 tokenizer 하나로 나눠 보고 토큰 수를 비교한다 (ID 숫자로 품질을 판단하지 않기).")],
+           notes="원자료 주의: 실제 tokenizer와 교육용 문자 tokenizer를 명확히 구분해 표시한다. 과제 1은 원자료 운영안 5회차의 과제.")
 
 d.references([["[06] Elman (1990). Finding Structure in Time. Cognitive Science", "단순 순환망의 구조"],
               ["[08] Bengio, Simard & Frasconi (1994). Learning Long-Term Dependencies with Gradient Descent is Difficult", "도입부"],
               ["[09] Hochreiter & Schmidhuber (1997). Long Short-Term Memory · Gers et al. (2000) forget gate", "셀 구조 그림"],
               ["[11] Bengio et al. (2003). A Neural Probabilistic Language Model · [14] Mikolov et al. (2013) Word2Vec", "모델 구조 그림"],
-              ["[15] Sutskever, Vinyals & Le (2014) · [16] Cho et al. (2014)", "Encoder–Decoder 구조, 길이별 성능"]])
+              ["[15] Sutskever, Vinyals & Le (2014) · [16] Cho et al. (2014)", "Encoder-Decoder 구조, 길이별 성능"]])
 
 d.handoff(["토큰 → 임베딩으로 문장을 숫자로", "RNN · LSTM으로 **순서와 기억**을", "Seq2Seq로 **길이가 다른** 입출력을"],
           ["모든 입력을 **고정 벡터 c 하나**로 압축 (병목)", "h_t는 h_(t−1)이 필요 — **순차 계산**"],

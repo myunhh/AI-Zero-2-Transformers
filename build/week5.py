@@ -266,13 +266,13 @@ s = d.slide("d = 8, H = 2, N = 5를 따라가기", lead="(B, N, d) → 투영 �
                   "B=2, N=5, d=8, H=2, d_h=4: X (2,5,8) → Q (2,5,8) → view (2,5,2,4) → transpose (2,2,5,4). 점수 QKᵀ: (2,2,5,4)@(2,2,4,5) → (2,2,5,5). "
                   "A V → (2,2,5,4) → transpose + reshape → (2,5,8) → W_O → (2,5,8). 입력과 출력 shape이 같아서 층을 쌓을 수 있다. "
                   "개념 확인 05: Q (B,H,T,d_h), K (B,H,S,d_h)이면 QKᵀ는 (B,H,T,S) — d_h는 내적하며 사라진다.")
-top, bot = s.area.top(2.9, gap=0.2)
+top, bot = s.area.top(2.55, gap=0.2)
 s.image(A("week5/mha_shapes.png"), top)
 s.table(["단계", "연산", "shape", "의미"],
         [["입력", "X", "(2, 5, 8)", "문장 2개 · 토큰 5개 · 특징 8개"], ["투영", "X W_Q (d × d)", "(2, 5, 8)", "모든 head의 Q를 한 번에"],
          ["head 분리", "view → transpose", "(2, 2, 5, 4)", "배치 · head · 토큰 · 특징"], ["점수", "Q Kᵀ / √4", "(2, 2, 5, 5)", "head별 위치 관계"],
          ["가중합", "A V", "(2, 2, 5, 4)", "head별 새 표현"], ["결합 · 투영", "concat → W_O", "(2, 5, 8)", "입력과 같은 shape → 쌓을 수 있다"]],
-        bot, widths=[1.5, 2.4, 1.7, 4.2], size=12)
+        bot, widths=[1.5, 2.4, 1.7, 4.2], size=13)
 
 s = d.slide("PyTorch로 직접 구현", lead="투영 한 번 → head 축 만들기 → scaled dot-product → 합치기", stage="코드",
             notes="직접 구현한 multi-head self-attention. view(B, N, H, d_h).transpose(1, 2)가 핵심 shape 조작이다. softmax의 dim=-1은 Key 축. "
