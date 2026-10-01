@@ -154,41 +154,43 @@ def broadcasting():
 
 # ------------------------------------------------------------------ 4. 행렬곱 shape
 def matmul_shape():
-    fig, ax = plt.subplots(figsize=(10, 5.2))
+    fig, ax = plt.subplots(figsize=(9, 6.6))
     _clean(ax)
-    c = 0.55
-    y = 4.3
+    c = 0.72
+    y = 5.9
     # A (2,3)
     _grid(ax, 0.3, y, 2, 3, c=c, fc=M, ec=T)
     for k in range(3):
         ax.add_patch(Rectangle((0.3 + k * c, y - c), c, c, fc=ACC_BG, ec=A, lw=2))
-    ax.text(0.3 + 1.5 * c, y + 0.3, "A  (2, 3)", ha="center", fontsize=16, color=T, weight="bold")
-    ax.text(2.3, y - c, "@", fontsize=24, ha="center", va="center", color=D)
+    ax.text(0.3 + 1.5 * c, y + 0.3, "A  (2, 3)", ha="center", fontsize=17, color=T, weight="bold")
+    ax.text(0.3 + 3 * c + 0.45, y - c, "@", fontsize=26, ha="center", va="center", color=D)
     # B (3,4)
-    bx = 2.8
+    bx = 0.3 + 3 * c + 0.9
     _grid(ax, bx, y + c / 2, 3, 4, c=c, fc=M, ec=T)
     for r in range(3):
         ax.add_patch(Rectangle((bx + 1 * c, y + c / 2 - (r + 1) * c), c, c, fc=ACC_BG, ec=A, lw=2))
-    ax.text(bx + 2 * c, y + c / 2 + 0.3, "B  (3, 4)", ha="center", fontsize=16, color=T, weight="bold")
-    ax.text(bx + 4 * c + 0.45, y - c, "=", fontsize=24, ha="center", va="center", color=D)
+    ax.text(bx + 2 * c, y + c / 2 + 0.3, "B  (3, 4)", ha="center", fontsize=17, color=T, weight="bold")
+    ax.text(bx + 4 * c + 0.45, y - c, "=", fontsize=26, ha="center", va="center", color=D)
     # C (2,4)
     cx = bx + 4 * c + 0.9
     _grid(ax, cx, y, 2, 4, c=c, fc=M, ec=T)
     ax.add_patch(Rectangle((cx + 1 * c, y - c), c, c, fc=A, ec=A, lw=2))
-    ax.text(cx + 2 * c, y + 0.3, "C  (2, 4)", ha="center", fontsize=16, color=T, weight="bold")
-    ax.text(cx + 4 * c + 0.2, y - 0.5 * c, "C[0,1] = A의 0행 · B의 1열\n(길이 3짜리 내적 하나)",
-            fontsize=13, color=A, va="center")
+    ax.text(cx + 2 * c, y + 0.3, "C  (2, 4)", ha="center", fontsize=17, color=T, weight="bold")
+    ax.annotate("", xy=(cx + 1.5 * c, y - c - 0.05), xytext=(cx + 1.5 * c, y - 2 * c - 0.55),
+                arrowprops=dict(arrowstyle="-|>", color=A, lw=1.8, mutation_scale=14))
+    ax.text(cx + 2 * c, y - 2 * c - 0.8, "C[0,1] = A의 0행 · B의 1열\n(길이 3짜리 내적 하나)",
+            fontsize=14, color=A, va="top", ha="center")
     # shape rule (여러 색 텍스트를 한 줄로)
     from matplotlib.offsetbox import AnchoredOffsetbox, HPacker, TextArea
     parts = [("(2, ", D), ("3", A), (") @ (", D), ("3", A), (", 4)  →  (2, 4)", D)]
-    boxes = [TextArea(t, textprops=dict(fontsize=26, color=cc, family="DejaVu Sans Mono",
+    boxes = [TextArea(t, textprops=dict(fontsize=27, color=cc, family="DejaVu Sans Mono",
                                          weight="bold" if cc == A else "normal")) for t, cc in parts]
     ab = AnchoredOffsetbox(loc="center left", child=HPacker(children=boxes, align="baseline", pad=0, sep=0),
-                           frameon=False, bbox_to_anchor=(0.3, 1.55), bbox_transform=ax.transData, borderpad=0)
+                           frameon=False, bbox_to_anchor=(0.3, 1.45), bbox_transform=ax.transData, borderpad=0)
     ax.add_artist(ab)
-    ax.text(0.3, 0.7, "안쪽 차원(3)이 같아야 곱할 수 있고, 곱하면서 사라진다", fontsize=14.5, color=G)
-    ax.set_xlim(0, 10.3)
-    ax.set_ylim(0.3, 5.3)
+    ax.text(0.3, 0.55, "안쪽 차원(3)이 같아야 곱할 수 있고,\n곱하면서 사라진다", fontsize=15, color=G, va="center")
+    ax.set_xlim(0, 10.0)
+    ax.set_ylim(-0.1, 7.0)
     return _save(fig, "matmul_shape.png")
 
 
@@ -290,7 +292,7 @@ def _bowl(ax):
     w = np.linspace(-0.3, 4.3, 200)
     Lw = 0.5 * (2 * w - 6) ** 2
     ax.plot(w, Lw, color=T, lw=3)
-    ax.text(3.2, 13.5, "L(w) = ½(2w − 6)$^2$", color=T, fontsize=13,
+    ax.text(3.2, 13.5, "L(w) = ½(2w − 6)²", color=T, fontsize=13,
             weight="bold", ha="center")
     ax.set_xlabel("파라미터 w", fontsize=13)
     ax.set_ylabel("손실 L", fontsize=13)
@@ -309,11 +311,11 @@ def derivative():
     ax.text(3, 1.2, "바닥 w = 3 : L = 0\n(ŷ = 6 = 정답)", fontsize=12.5, color=G, ha="center")
     ax.annotate("", xy=(2.8, 0.5), xytext=(1.2, 7.5),
                 arrowprops=dict(arrowstyle="-|>", color=L, lw=1.6, ls="--", mutation_scale=16))
-    ax.text(1.75, 4.6, "어느 쪽으로, 얼마나?\n→ Part 4", fontsize=12.5, color=D, ha="left")
+    ax.text(-0.15, 3.4, "어느 쪽으로, 얼마나\n움직여야 하나? → Part 4", fontsize=12.5, color=D, ha="left")
     _save(fig, "loss_bowl.png")
 
-    # (b) 미분 슬라이드용: 접선 + 한 걸음
-    fig, ax = plt.subplots(figsize=(9, 5.8))
+    # (b) 미분 슬라이드용: 접선 + 한 걸음 (슬라이드에서 가로 폭에 맞춰 들어가도록 넓은 비율)
+    fig, ax = plt.subplots(figsize=(10, 5.2))
     _bowl(ax)
     # tangent at w=1
     wt = np.linspace(0.1, 1.9, 10)
@@ -376,44 +378,51 @@ def gd_paths():
         ax.tick_params(labelsize=10)
         for s in ("top", "right"):
             ax.spines[s].set_visible(False)
-    axs[0].set_ylabel("L(w) = (w − 3)$^2$", fontsize=12)
+    axs[0].set_ylabel("L(w) = (w − 3)²", fontsize=12)
     fig.tight_layout()
     return _save(fig, "gd_paths.png")
 
 
 # ------------------------------------------------------------------ 11. 일반화
 def generalization():
-    fig, (a1, a2) = plt.subplots(1, 2, figsize=(10, 5.2), gridspec_kw=dict(width_ratios=[0.8, 1.2]))
-    # split bar
+    fig, (a1, a2) = plt.subplots(2, 1, figsize=(9, 7.2), gridspec_kw=dict(height_ratios=[0.5, 1.0]))
+    # split bar (가로)
     parts = [("훈련 train", 70, T, "파라미터 학습"), ("검증 val", 15, T2, "설정 선택"),
              ("테스트 test", 15, A, "최종 평가 1회")]
-    y = 0
-    for name, v, col, role in parts:
-        a1.bar(0, v, bottom=y, color=col, width=0.55, edgecolor="white", linewidth=2)
-        a1.text(0.36, y + v / 2, f"{name}\n{role}", va="center", fontsize=12.5, color=D)
-        y += v
-    a1.set_xlim(-0.4, 1.5)
-    a1.set_ylim(0, 100)
+    x = 0
+    for k, (name, v, col, role) in enumerate(parts):
+        a1.barh(0, v, left=x, color=col, height=0.6, edgecolor="white", linewidth=2)
+        a1.text(x + v / 2, 0, f"{v}%", va="center", ha="center", fontsize=14, color="white", weight="bold")
+        # 좁은 구간(val, test)은 설명을 위아래로 엇갈리게 둔다
+        ty = -0.5 if k != 2 else -1.25
+        a1.text(1 if k == 0 else x + v / 2, ty, f"{name} · {role}", va="top", ha="left" if k == 0 else "right",
+                fontsize=13, color=col if k else D, weight="bold" if k else None)
+        if k:
+            a1.plot([x + v / 2, x + v / 2], [-0.32, ty + 0.05], color=col, lw=1.2)
+        x += v
+    a1.set_xlim(0, 100)
+    a1.set_ylim(-2.0, 0.5)
     a1.axis("off")
-    a1.set_title("데이터 나누기 (예: 70/15/15)", fontsize=13.5, color=D)
+    a1.set_title("데이터 나누기 (예: 70 / 15 / 15)", fontsize=15, color=D, weight="bold")
     # curves
     e = np.linspace(1, 30, 100)
     tr = 2.2 * np.exp(-e / 7) + 0.15
     va = 2.2 * np.exp(-e / 7) + 0.35 + 0.0022 * (e - 10) ** 2 * (e > 10)
     a2.plot(e, tr, color=T, lw=3)
     a2.plot(e, va, color=A, lw=3)
-    a2.text(29, tr[-1] + 0.1, "훈련 손실", color=T, fontsize=13, weight="bold", ha="right")
-    a2.text(29, va[-1] + 0.1, "검증 손실", color=A, fontsize=13, weight="bold", ha="right")
+    a2.text(29, tr[-1] + 0.12, "훈련 손실", color=T, fontsize=15, weight="bold", ha="right")
+    a2.text(29, va[-1] + 0.12, "검증 손실", color=A, fontsize=15, weight="bold", ha="right")
     i = int(np.argmin(va))
-    a2.axvline(e[i], color=G, ls="--", lw=1.2)
-    a2.text(e[i] + 0.4, 2.0, "검증 손실이 다시 오르면\n외운 패턴이 밖에서 안 통함", fontsize=12, color=G)
-    a2.set_xlabel("학습 epoch", fontsize=12)
-    a2.set_ylabel("손실", fontsize=12)
-    a2.set_title("설명용 곡선 (실제 실험 결과 아님)", fontsize=12.5, color=G)
+    a2.axvline(e[i], color=G, ls="--", lw=1.4)
+    a2.text(e[i] + 0.5, 2.05, "검증 손실이 다시 오르면 과적합:\n외운 패턴이 밖에서 안 통함", fontsize=14, color=G)
+    a2.set_xlabel("학습 epoch", fontsize=14)
+    a2.set_ylabel("손실", fontsize=14)
+    a2.tick_params(labelsize=12)
+    a2.set_title("설명용 곡선 (실제 실험 결과 아님)", fontsize=14, color=G)
     a2.set_ylim(0, 2.6)
     for s in ("top", "right"):
         a2.spines[s].set_visible(False)
-    fig.tight_layout()
+    fig.tight_layout(h_pad=1.2)
     return _save(fig, "generalization.png")
 
 
