@@ -104,9 +104,11 @@ def fig_perceptron_train():
         scatter_labels(ax, y)
         acc = np.mean([(int(ww @ x + bb >= 0) == t) for x, t in zip(PTS, y)])
         style(ax, title=tt)
-        ax.text(0.5, -0.33, f"w=({ww[0]:g},{ww[1]:g}), b={bb:g} · 정확도 {acc*100:.0f}%", ha="center",
-                fontsize=11.5, color=DARK)
-    fig.tight_layout()
+        ax.title.set_fontsize(17)
+        # 네 패널 모두 같은 축이므로 x₁ 대신 상태 캡션을 축 이름 자리에 둔다
+        ax.set_xlabel(f"w=({ww[0]:g},{ww[1]:g}), b={bb:g}\n정확도 {acc*100:.0f}%", fontsize=13, color=DARK,
+                      labelpad=6)
+    fig.tight_layout(h_pad=1.5, w_pad=1.5)
     save(fig, "perceptron_train.png")
     return snaps
 
@@ -120,9 +122,10 @@ def fig_halfplane():
     ax.annotate("", xy=(1.25, 1.25), xytext=(0.75, 0.75),
                 arrowprops=dict(arrowstyle="-|>", color=ACC, lw=3, mutation_scale=22))
     ax.text(1.28, 1.05, "w = (1, 1)\n(경계에 수직)", color=ACC, fontsize=13, fontweight="bold")
-    ax.text(1.35, 1.75, "ŷ = 1 영역\nwᵀx + b ≥ 0", color=TEAL, fontsize=13, ha="center")
-    ax.text(0.05, 0.05, "ŷ = 0 영역\nwᵀx + b < 0", color=GRAY, fontsize=13)
-    ax.text(0.98, 0.3, "경계: x₁ + x₂ − 1.5 = 0", color=TEAL, fontsize=13, fontweight="bold", rotation=-45,
+    ax.text(1.35, 1.75, "ŷ = 1 영역\nw·x + b ≥ 0", color=TEAL, fontsize=13, ha="center")
+    ax.text(-0.42, -0.42, "ŷ = 0 영역\nw·x + b < 0", color=GRAY, fontsize=13)
+    # 경계선(x₁+x₂=1.5)과 평행하게, 선에서 약 0.35 떨어뜨려 놓는다
+    ax.text(0.72, 0.28, "경계: x₁ + x₂ − 1.5 = 0", color=TEAL, fontsize=13, fontweight="bold", rotation=-45,
             ha="center", va="center", rotation_mode="anchor")
     ax.set_xlim(*lim); ax.set_ylim(*lim); ax.set_aspect("equal")
     ax.set_xlabel("x₁"); ax.set_ylabel("x₂", rotation=0)
@@ -182,7 +185,7 @@ def fig_xor_experiment():
     scatter_labels(ax, y)
     for (a, b), t in zip(PTS, y):
         ax.text(a + 0.09, b + 0.1, f"f={f_xor(a, b):g}", fontsize=12, color=DARK)
-    style(ax, title="비선형: ReLU(s) − 2·ReLU(s−1) → 4/4")
+    style(ax, title="비선형: ReLU(s) − 2·ReLU(s−1), s = x₁+x₂ → 4/4")
     for a in axs:
         a.title.set_fontsize(13.5)
     fig.tight_layout()
@@ -263,7 +266,7 @@ def fig_trained():
     ax = axs[1]
     ax.plot(losses, color=ACC, lw=2.5)
     ax.set_xlabel("step"); ax.set_ylabel("BCE loss")
-    ax.set_title("손실 곡선 (full-batch GD, lr=0.5)", color=DARK, fontsize=15, fontweight="bold")
+    ax.set_title("손실 곡선 (경사하강법, lr=0.5)", color=DARK, fontsize=15, fontweight="bold")
     for sp in ("top", "right"):
         ax.spines[sp].set_visible(False)
     ax.grid(alpha=0.3)
@@ -282,28 +285,28 @@ def fig_trained():
 
 # ---------------------------------------------------------------- 8. computation graph (tiny MLP)
 def fig_graph():
-    fig, ax = plt.subplots(figsize=(11.5, 4.9))
-    ax.set_xlim(0, 12); ax.set_ylim(0, 5.3); ax.axis("off")
-    nodes = [("x", 0.9, "[1, 1]", "입력"), ("z", 3.5, "[1.5, −0.5]", "z = xW$_1$+b$_1$"), ("h", 6.1, "[1.5, 0]", "h = ReLU(z)"),
-             ("ŷ", 8.5, "3", "ŷ = hW$_2$+b$_2$"), ("L", 10.9, "0.5", "L = ½(ŷ−y)$^2$")]
+    fig, ax = plt.subplots(figsize=(12.2, 4.9))
+    ax.set_xlim(0, 12.7); ax.set_ylim(0, 5.3); ax.axis("off")
+    nodes = [("x", 1.0, "[1, 1]", "입력"), ("z", 3.8, "[1.5, −0.5]", "z = xW$_1$+b$_1$"), ("h", 6.6, "[1.5, 0]", "h = ReLU(z)"),
+             ("ŷ", 9.2, "3", "ŷ = hW$_2$+b$_2$"), ("L", 11.7, "0.5", "L = ½(ŷ−y)$^2$")]
     grads = {"z": "[2, 0]", "h": "[2, 1]", "ŷ": "1", "L": "1"}
     for nm, x, fv, lab in nodes:
-        ax.add_patch(FancyBboxPatch((x - 0.85, 2.1), 1.7, 1.1, boxstyle="round,pad=0.05", fc=MINT, ec=TEAL, lw=2))
-        ax.text(x, 2.85, nm, ha="center", va="center", fontsize=19, color=TEAL, fontweight="bold")
-        ax.text(x, 2.4, fv, ha="center", va="center", fontsize=13, color=DARK)
-        ax.text(x, 3.55, lab, ha="center", fontsize=12, color=GRAY)
+        ax.add_patch(FancyBboxPatch((x - 0.95, 2.05), 1.9, 1.2, boxstyle="round,pad=0.05", fc=MINT, ec=TEAL, lw=2))
+        ax.text(x, 2.88, nm, ha="center", va="center", fontsize=23, color=TEAL, fontweight="bold")
+        ax.text(x, 2.38, fv, ha="center", va="center", fontsize=16, color=DARK)
+        ax.text(x, 3.55, lab, ha="center", fontsize=15, color=GRAY)
         if nm in grads:
-            ax.text(x, 1.45, f"∂L/∂{nm} = {grads[nm]}", ha="center", fontsize=12.5, color=ACC, fontweight="bold")
+            ax.text(x, 1.35, f"∂L/∂{nm} = {grads[nm]}", ha="center", fontsize=16, color=ACC, fontweight="bold")
     for (a, xa, *_), (b, xb, *_) in zip(nodes[:-1], nodes[1:]):
-        ax.add_patch(FancyArrowPatch((xa + 0.9, 2.95), (xb - 0.9, 2.95), arrowstyle="-|>", mutation_scale=16, color=TEAL2, lw=2))
-        ax.add_patch(FancyArrowPatch((xb - 0.9, 2.3), (xa + 0.9, 2.3), arrowstyle="-|>", mutation_scale=16, color=ACC, lw=1.6, ls="--"))
-    ax.text(2.2, 4.3, "W₁=[[1,−1],[0.5,0.5]], b₁=0", fontsize=12, color=DARK, ha="center")
-    ax.text(7.3, 4.3, "W₂=[[2],[1]], b₂=0", fontsize=12, color=DARK, ha="center")
-    ax.text(10.9, 4.3, "정답 y = 2", fontsize=12, color=DARK, ha="center")
-    ax.text(6, 0.6, "∂L/∂W₂ = hᵀ·1 = [[1.5],[0]]      ∂L/∂W₁ = xᵀ·[2, 0] = [[2, 0],[2, 0]]", ha="center",
-            fontsize=13, color=ACC)
-    ax.text(0.1, 5.0, "→ forward(값)", color=TEAL2, fontsize=12.5, fontweight="bold")
-    ax.text(3.0, 5.0, "⇠ backward(gradient)", color=ACC, fontsize=12.5, fontweight="bold")
+        ax.add_patch(FancyArrowPatch((xa + 1.0, 2.95), (xb - 1.0, 2.95), arrowstyle="-|>", mutation_scale=18, color=TEAL2, lw=2.2))
+        ax.add_patch(FancyArrowPatch((xb - 1.0, 2.3), (xa + 1.0, 2.3), arrowstyle="-|>", mutation_scale=18, color=ACC, lw=1.8, ls="--"))
+    ax.text(2.4, 4.3, "W₁=[[1,−1],[0.5,0.5]], b₁=0", fontsize=15, color=DARK, ha="center")
+    ax.text(7.9, 4.3, "W₂=[[2],[1]], b₂=0", fontsize=15, color=DARK, ha="center")
+    ax.text(11.7, 4.3, "정답 y = 2", fontsize=15, color=DARK, ha="center")
+    ax.text(6.35, 0.45, "∂L/∂W₂ = hᵀ·1 = [[1.5],[0]]      ∂L/∂W₁ = xᵀ·[2, 0] = [[2, 0],[2, 0]]", ha="center",
+            fontsize=16, color=ACC, fontweight="bold")
+    ax.text(0.0, 5.0, "→ forward(값)", color=TEAL2, fontsize=15, fontweight="bold")
+    ax.text(3.2, 5.0, "⇠ backward(gradient)", color=ACC, fontsize=15, fontweight="bold")
     save(fig, "graph.png")
 
 
@@ -322,10 +325,12 @@ def fig_act():
     ax.plot(z, 1 - np.tanh(z) ** 2, color=GRAY, lw=2.5, ls="--", label="tanh′ (최대 1)")
     zz = np.where(z > 0, 1.0, 0.0)
     ax.plot(z[z < 0], zz[z < 0], color=ACC, lw=3); ax.plot(z[z > 0], zz[z > 0], color=ACC, lw=3, label="ReLU′ (0 또는 1)")
-    ax.set_ylim(-0.1, 1.2); ax.set_title("도함수 σ′(z) — gradient에 곱해지는 값", color=DARK, fontsize=15, fontweight="bold")
-    for ax in axs:
+    # 범례가 ReLU′ = 1 선 위에 겹치지 않도록 위쪽 여백을 둔다
+    ax.set_ylim(-0.1, 1.75); ax.set_yticks([0, 0.5, 1.0])
+    ax.set_title("도함수 σ′(z) — gradient에 곱해지는 값", color=DARK, fontsize=15, fontweight="bold")
+    for ax, loc in zip(axs, ("upper left", "upper right")):
         ax.axhline(0, color=LINE, lw=1); ax.axvline(0, color=LINE, lw=1)
-        ax.legend(frameon=False, fontsize=11.5, loc="upper left"); ax.set_xlabel("z")
+        ax.legend(frameon=False, fontsize=11.5, loc=loc); ax.set_xlabel("z")
         for sp in ("top", "right"):
             ax.spines[sp].set_visible(False)
     fig.tight_layout()
