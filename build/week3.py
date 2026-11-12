@@ -4,12 +4,14 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+import deckkit  # noqa: E402
+deckkit.use_theme("clean")  # Apple 디자인 원칙 테마 — import * 보다 먼저
 from deckkit import *  # noqa
 
 A = lambda p: os.path.join(HERE, "assets", p)
 OUT = os.path.join(HERE, "..", "lectures", "week03_cnn_and_deep_learning.pptx")
 
-d = Deck(3, "CNN과 깊은 학습의 조건", date="2026-10-19")
+d = Deck(3, "CNN과 깊은 학습의 조건", date="2026-10-19", theme="clean")
 
 # ============================================================ 도입
 d.question("공간 구조를 어떻게 쓰고,\n깊은 모델은 어떻게 학습시키나?",
@@ -154,9 +156,9 @@ s = d.slide("LeNet: 합성곱 신경망의 원형", lead="1989 우편번호 인�
                   "(Fukushima의 1980 Neocognitron도 국소 연결과 계층 구조의 선구적 모델.) "
                   "shape 흐름: 1×32×32 → C1 6@28×28 (5×5) → S2 6@14×14 → C3 16@10×10 → S4 16@5×5 → C5 120 → F6 84 → 출력 10. "
                   "합성곱으로 특징을 뽑고 공간 크기를 줄인 뒤, 마지막에 지난주의 MLP로 분류한다.")
-top, bot = s.area.top(2.5, gap=0.25)
+top, bot = s.area.top(2.4, gap=0.2)
 s.image(A("week3/lenet_pipeline.png"), top)
-L, R = bot.cols(0.55, gap=0.4)
+L, R = bot.cols(0.52, gap=0.4)
 s.table(["층", "연산", "출력 shape"], [["C1", "5×5 합성곱 6개", "6 × 28 × 28"], ["S2", "2×2 pooling", "6 × 14 × 14"],
                                      ["C3", "5×5 합성곱 16개", "16 × 10 × 10"], ["S4 → C5 → F6", "pooling → 완전 연결", "16×5×5 → 120 → 84"],
                                      ["출력", "10개 숫자 클래스", "10"]], L, size=14, align="lcc", widths=[1.3, 1.6, 1.6])
@@ -167,11 +169,11 @@ s = d.slide("등변성 ≠ 불변성", lead="입력이 옮겨지면 특징도 �
             notes="같은 필터를 모든 위치에 쓰므로 입력 패턴을 한 칸 옮기면 특징 맵의 반응도 한 칸 옮겨진다 — translation equivariance(이동 등변성). "
                   "여기에 전체 max 같은 요약을 붙이면 이 예시에서는 위치와 무관한 값(불변)이 된다. "
                   "주의: CNN이 자동으로 완벽한 위치 불변성을 보장하는 것은 아니다. 경계·padding·stride·pooling에 따라 조건이 달라진다.")
-L, R = s.cols(0.6)
+L, R = s.cols(0.56)
 s.image(A("week3/equivariance.png"), L)
 s.bullets(["**등변성**: 입력 이동 → 특징도 같이 이동", ("같은 필터를 모든 위치에 쓰기 때문", 1),
            "**불변성**: 입력이 이동해도 출력이 같음", ("전체 max 같은 요약을 붙이면 (이 예시에서)", 1),
-           "==주의== CNN이 완벽한 불변성을 **보장하지 않는다**", ("경계 · padding · stride · pooling에 따라 다름", 1)], R, size=17)
+           "==주의== CNN이 완벽한 불변성을 **보장하지 않는다**", ("경계 · padding · stride · pooling에 따라 다름", 1)], R, size=16)
 
 s = d.slide("PyTorch로 shape 확인", lead="Conv2d 한 줄에 필터 수·크기·padding이 모두 들어 있다", stage="코드",
             notes="nn.Conv2d(in_channels, out_channels, kernel_size, padding). 입력 (8, 3, 32, 32) → 출력 (8, 64, 32, 32). "
@@ -189,7 +191,7 @@ s.code("import torch, torch.nn as nn\n"
        "print(c1(torch.randn(1, 1, 32, 32)).shape)  # (1, 6, 28, 28)", L, size=14)
 s.callout("실습: 주석을 가리고 출력 크기 공식으로 먼저 계산한 뒤 실행해 맞춰 본다.", Box(L.x, L.b - 0.8, L.w, 0.8), kind="tip", size=15)
 s.bullets(["`Conv2d(C_in, C_out, K, padding)`", "출력 shape를 **먼저 손으로** 써 보기", "파라미터 1,792 = 손 계산과 같다",
-           "`MaxPool2d(2)`: 공간 절반", "LeNet C1: 32 → **28**", ("파라미터 6 × 25 + 6 = 156", 1)], R)
+           "`MaxPool2d(2)`: 공간 절반", "LeNet C1: 32 → **28**", ("파라미터 6 × 25 + 6 = 156", 1)], R, size=16)
 
 s = d.slide("CNN의 네 가지 개념 — 얻는 것과 대가", lead="모든 구조적 가정은 이득과 제약을 함께 가져온다", stage="정리",
             notes="원자료의 정리 표(발표자 참고). 네 개념 각각이 무엇을 얻게 해 주고, 대신 어떤 제약을 만드는지. "
@@ -200,7 +202,7 @@ s.table(["개념", "얻는 것", "함께 생기는 제약"],
          ["Weight sharing", "파라미터 절감, 같은 연산 재사용", "위치마다 완전히 독립된 필터를 쓰지 않는다"],
          ["Receptive field", "층을 쌓아 넓은 입력 영역 통합", "넓은 의존 관계를 만들 때 경로가 길어진다"],
          ["Translation equivariance", "입력 이동에 대응하는 특징 이동", "경계·padding·stride·pooling에 따라 조건이 달라진다"]],
-        widths=[2.3, 3.6, 4.6], size=16)
+        widths=[2.5, 3.3, 5.3], size=16)
 s.callout("첫째·셋째 제약(먼 위치가 직접 만나지 못하고, 경로가 길다)을 기억해 두자 — "
           "5주차 Attention은 이 제약을 **다른 방식**으로 푼다.", Box(s.area.x, s.area.y + 3.3, s.area.w, 1.0), kind="tip", size=16)
 
@@ -259,11 +261,11 @@ s = d.slide("2012: AlexNet", lead="ImageNet 대회에서 top-5 오류 15.3% — 
             notes="Krizhevsky, Sutskever, Hinton(2012). ImageNet(ILSVRC) 약 120만 장, 1000개 클래스. 합성곱 5층 + 완전 연결 3층, 약 6,000만 파라미터. "
                   "GTX 580 GPU 2대로 약 5~6일 학습. ReLU로 학습 속도 향상, dropout으로 과적합 억제, 데이터 증강(자르기·뒤집기) 사용. "
                   "top-5 오류 15.3%로 2위 26.2%를 크게 앞서며 컴퓨터 비전이 딥러닝으로 넘어가는 전환점이 되었다.")
-top, bot = s.area.top(2.6, gap=0.25)
+top, bot = s.area.top(2.4, gap=0.2)
 s.image(A("week3/alexnet_pipeline.png"), top)
-L, R = bot.cols(0.45, gap=0.4)
+L, R = bot.cols(0.5, gap=0.4)
 s.table(["항목", "값"], [["top-5 오류", "**15.3%** (2위 26.2%)"], ["데이터", "ImageNet 약 120만 장, 1000 클래스"],
-                        ["구조", "합성곱 5 + 완전 연결 3, 약 6천만 파라미터"], ["계산", "GTX 580 GPU 2대"]], L, size=14, widths=[1.2, 3])
+                        ["구조", "합성곱 5 + 완전 연결 3, 약 6천만 파라미터"], ["계산", "GTX 580 GPU 2대"]], L, size=14, widths=[1.1, 3.4])
 s.bullets(["**ReLU**: 학습이 몇 배 빨라짐", "**Dropout**: 학습 중 뉴런 일부를 끄기 → 과적합 억제",
            "**데이터 증강**: 자르기·뒤집기로 데이터 늘리기", "**GPU**: 대규모 행렬곱을 병렬로"], R)
 
@@ -275,7 +277,7 @@ s.cards([{"head": "데이터", "body": "ImageNet 약 120만 장"}, {"head": "GPU
          {"head": "초기화/최적화", "body": "SGD + momentum, 적절한 초기화"}, {"head": "구조", "body": "CNN의 구조적 가정", "tone": "accent"}],
         cols=3, body_size=16, head_size=19)
 s.callout("표현력(무엇을 만들 수 있나)이 충분해도, 학습·데이터·자원이 없으면 그 표현을 **얻지 못한다** — Transformer도 마찬가지.",
-          Box(s.area.x, s.area.b - 1.0, s.area.w, 1.0), kind="key", size=16)
+          Box(s.area.x, s.area.b - 1.0, s.area.w, 1.0), kind="key", size=15)
 
 s = d.slide("오류는 줄고, 층은 깊어졌다", lead="ILSVRC 우승 모델: 8층(2012) → 22층(2014) → 152층(2015)", stage="검증",
             notes="ILSVRC 분류 top-5 오류: 2010 28.2%, 2011 25.8% (둘 다 사람이 설계한 특징 + 분류기), 2012 AlexNet 15.3%, 2013 11.7%, "
@@ -284,7 +286,7 @@ s = d.slide("오류는 줄고, 층은 깊어졌다", lead="ILSVRC 우승 모델:
 L, R = s.cols(0.6)
 s.image(A("week3/ilsvrc.png"), L)
 s.bullets(["2010–2011: 사람이 설계한 특징 + 분류기", "2012 AlexNet **8층**: 15.3%", "2014 VGG 16–19층: 7.3%",
-           "2014 GoogLeNet **22층**: 6.67%", "2015 ResNet **152층**: 3.57%", "그런데 **그냥 더 깊게**는 잘 안 됐다 → Part 5"], R)
+           "2014 GoogLeNet **22층**: 6.67%", "2015 ResNet **152층**: 3.57%", "그런데 **그냥 더 깊게**는 잘 안 됐다 → Part 5"], R, size=16)
 
 # ============================================================ Part 5
 d.part(5, "더 깊게: Residual과 Normalization", "2015–2016 · 더 깊게 쌓았더니 오히려 훈련 오류가 커졌다면?")
@@ -330,7 +332,7 @@ s = d.slide("BatchNorm vs LayerNorm", lead="BatchNorm은 배치를 가로질러,
                   "그래서 Transformer는 LayerNorm을 쓴다(6주차). 입력 (B, N, d)에서 LayerNorm(d)는 마지막 축 d로 평균을 낸다.")
 top, bot = s.area.top(2.8, gap=0.25)
 s.image(A("week3/bn_vs_ln.png"), top)
-L, R = bot.cols(0.58, gap=0.4)
+L, R = bot.cols(0.55, gap=0.4)
 s.table(["구분", "BatchNorm (2015)", "LayerNorm (2016)"],
         [["평균 내는 범위", "같은 특징, **배치 전체**", "**샘플 하나**의 모든 특징"], ["배치 크기 영향", "받는다", "받지 않는다"],
          ["주 사용처", "CNN", "RNN · **Transformer**"]], L, size=14, align="lcc", widths=[1.1, 1.3, 1.3])

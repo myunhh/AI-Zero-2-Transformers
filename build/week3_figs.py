@@ -23,8 +23,11 @@ from matplotlib.patches import FancyArrowPatch, FancyBboxPatch, Rectangle  # noq
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "week3")
 os.makedirs(OUT, exist_ok=True)
 TEAL, TEAL2, MINT, DARK, GRAY, ACC, LINE = (P[k] for k in ("TEAL", "TEAL2", "MINT", "DARK", "GRAY", "ACCENT", "LINE"))
-MINT2 = "#CFE8EE"
-ACC_BG = "#FDF1E8"
+MINT2 = P.get("MINT2", "#CFE8EE")
+ACC_BG = P.get("ACC_BG", "#FDF1E8")
+MID = P.get("MID", "#9FD0DB")
+OFF = P.get("OFF", "#DDE7EB")
+SOFT = "#C7C7CC"  # 옅은 중립 회색 (이전 단계·입력 표시용)
 
 
 def save(fig, name):
@@ -43,7 +46,7 @@ def grid(ax, arr, x0, y0, cell=1.0, hl=None, hl_color=ACC, fs=13, fill=None, tit
             v = arr[i, j]
             if fill is None:
                 t = abs(v) / vmax
-                fc = MINT if t < 0.05 else (MINT2 if t < 0.6 else "#9FD0DB")
+                fc = MINT if t < 0.05 else (MINT2 if t < 0.6 else MID)
             else:
                 fc = fill
             ax.add_patch(Rectangle((x0 + j * cell, y0 - (i + 1) * cell), cell, cell, fc=fc, ec="white", lw=1.5))
@@ -69,7 +72,7 @@ def canvas(w, h, xlim, ylim):
 
 # ---------------------------------------------------------------- 1. 이미지 = 텐서
 def fig_image_tensor():
-    fig, ax = canvas(9, 5.2, (-0.3, 17.2), (-9.3, 1.2))
+    fig, ax = canvas(9.4, 5.2, (-0.3, 18.0), (-9.3, 1.2))
     img = np.array([
         [0, 0, 0, 0, 0, 0, 0, 0],
         [0, 210, 250, 250, 250, 240, 0, 0],
@@ -87,17 +90,17 @@ def fig_image_tensor():
             ax.text(j + .5, -i - .5, str(v), ha="center", va="center", fontsize=9,
                     color="white" if v < 128 else DARK)
     ax.text(4, 0.3, "흑백 8×8 이미지 = (1, 8, 8)", ha="center", fontsize=14, color=TEAL, fontweight="bold")
-    ax.text(4, -8.8, "각 칸은 0~255 밝기 값 (0 = 검정, 255 = 흰색)", ha="center", fontsize=11.5, color=GRAY)
+    ax.text(4, -8.8, "각 칸은 0~255 밝기 값 (0 = 검정, 255 = 흰색)", ha="center", fontsize=10.5, color=GRAY)
     # RGB 스택
-    cols = ["#E57373", "#81C784", "#64B5F6"]
+    cols = ["#F28B82", "#8FD19E", TEAL2]
     names = ["R", "G", "B"]
     for k in range(3):
-        x, y = 11.2 + k * 0.9, -6.6 + k * 0.9
+        x, y = 12.0 + k * 0.9, -6.6 + k * 0.9
         ax.add_patch(Rectangle((x, y), 4.2, 4.2, fc=cols[k], ec="white", lw=2, alpha=.85))
         ax.text(x + 0.25, y + 0.25, names[k], fontsize=14, color="white", fontweight="bold")
-    ax.text(13.9, 0.3, "컬러 이미지 = (C, H, W)", ha="center", fontsize=14, color=TEAL, fontweight="bold")
-    ax.text(13.9, -7.6, "C=3 채널 × H × W", ha="center", fontsize=12, color=DARK)
-    ax.text(13.9, -8.5, "배치로 묶으면 (B, C, H, W)", ha="center", fontsize=12, color=ACC, fontweight="bold")
+    ax.text(14.7, 0.3, "컬러 이미지 = (C, H, W)", ha="center", fontsize=14, color=TEAL, fontweight="bold")
+    ax.text(14.7, -7.6, "C=3 채널 × H × W", ha="center", fontsize=12, color=DARK)
+    ax.text(14.7, -8.5, "배치로 묶으면 (B, C, H, W)", ha="center", fontsize=12, color=ACC, fontweight="bold")
     save(fig, "image_tensor.png")
 
 
@@ -163,7 +166,7 @@ def fig_inductive_bias():
     ax = axs[2]
     for k, (x0, n, lab) in enumerate(((0, 6, "선"), (4.0, 4, "모양"), (7.2, 2, "물체"))):
         y0 = -3 + n / 2
-        _cells(ax, x0, y0, n, fc=[MINT2, "#9FD0DB", TEAL2][k])
+        _cells(ax, x0, y0, n, fc=[MINT2, MID, TEAL2][k])
         ax.text(x0 + n / 2, -6.3, lab, ha="center", va="top", fontsize=13, color=DARK, fontweight="bold")
         if k < 2:
             ax.add_patch(FancyArrowPatch((x0 + n + 0.15, -3), (x0 + n + 0.85, -3), arrowstyle="-|>",
@@ -213,11 +216,13 @@ def fig_params():
     labels = ["Fully connected\n(모든 입력 → 모든 출력)", "국소 연결만\n(가중치 공유 없음)", "합성곱\n(국소 연결 + 공유)"]
     vals = [fc, local, conv]
     fig, ax = plt.subplots(figsize=(8.2, 4.8))
-    cols = [GRAY, TEAL2, ACC]
+    cols = [SOFT, TEAL2, ACC]
     bars = ax.barh(labels[::-1], vals[::-1], color=cols[::-1], height=.55)
     ax.set_xscale("log")
-    logfmt(ax, "x")
     ax.set_xlim(1e2, 5e10)
+    ax.set_xticks([1e2, 1e4, 1e6, 1e8, 1e10])
+    ax.minorticks_off()
+    logfmt(ax, "x")
     for b, v in zip(bars, vals[::-1]):
         ax.text(v * 1.6, b.get_y() + b.get_height() / 2, f"{v:,}", va="center", fontsize=14, color=DARK,
                 fontweight="bold")
@@ -232,7 +237,7 @@ def fig_params():
 def fig_pool():
     x = np.array([[1, 3, 2, 0], [4, 6, 1, 1], [0, 2, 9, 5], [3, 1, 4, 7]])
     fig, ax = canvas(8.4, 4.6, (-0.4, 10.4), (-5.5, 1.1))
-    quad = [MINT2, ACC_BG, "#E3F1D9", "#EDE3F6"]
+    quad = [MINT2, OFF, OFF, MINT2]
     for i in range(4):
         for j in range(4):
             q = (i // 2) * 2 + j // 2
@@ -247,7 +252,7 @@ def fig_pool():
         for j in range(2):
             ax.add_patch(Rectangle((6.8 + j * 1.3, -1 - i * 1.3 - .3), 1.3, 1.3, fc=quad[i * 2 + j], ec="white", lw=2))
             ax.text(6.8 + j * 1.3 + .65, -1 - i * 1.3 + .35, str(y[i, j]), ha="center", va="center", fontsize=17,
-                    fontweight="bold", color=ACC)
+                    fontweight="bold", color=TEAL)
     ax.text(8.1, 0.35, "출력 (2×2)", ha="center", fontsize=14, color=TEAL, fontweight="bold")
     ax.text(5, -4.9, "학습 파라미터 0개 · 공간 크기 1/2 · 작은 이동에 덜 민감", ha="center", fontsize=12.5, color=DARK)
     save(fig, "pooling.png")
@@ -265,7 +270,7 @@ def fig_receptive():
     for L, yy in enumerate(ys):
         for i in range(n):
             on = i in rf[L]
-            col = (ACC if L == 3 else TEAL) if on else "#DDE7EB"
+            col = (ACC if L == 3 else TEAL) if on else OFF
             ax.add_patch(plt.Circle((i, yy), .28, color=col, zorder=3))
         ax.text(-1.0, yy, names[L], ha="right", va="center", fontsize=12, color=DARK)
     for L in (3, 2, 1):
@@ -283,7 +288,7 @@ def fig_receptive():
 
 
 # ---------------------------------------------------------------- 6. LeNet-5 shape 흐름
-def pipeline(stages, name, figsize, scale, title=None, fs=11.5, stagger=0.0):
+def pipeline(stages, name, figsize, scale, title=None, fs=11.5, stagger=0.0, gap=0.7):
     """stagger > 0이면 아래쪽 shape 라벨을 홀수 번째마다 그만큼 더 내려 이웃끼리 겹치지 않게 한다."""
     fig, ax = plt.subplots(figsize=figsize)
     ax.axis("off")
@@ -299,9 +304,9 @@ def pipeline(stages, name, figsize, scale, title=None, fs=11.5, stagger=0.0):
         sy = -0.35 - (stagger if i % 2 else 0)
         ax.text(x + w / 2, sy, sub, ha="center", va="top", fontsize=fs - 1.5, color=GRAY)
         if i < len(stages) - 1:
-            ax.add_patch(FancyArrowPatch((x + w + 0.08, maxh / 2), (x + w + 0.62, maxh / 2), arrowstyle="-|>",
+            ax.add_patch(FancyArrowPatch((x + w + 0.08, maxh / 2), (x + w + gap - 0.08, maxh / 2), arrowstyle="-|>",
                                          mutation_scale=14, color=TEAL2, lw=1.8))
-        x += w + 0.7
+        x += w + gap
     ax.set_xlim(-0.3, x)
     ax.set_ylim(-1.3 - stagger, maxh + 1.1)
     if title:
@@ -310,11 +315,11 @@ def pipeline(stages, name, figsize, scale, title=None, fs=11.5, stagger=0.0):
 
 
 def fig_lenet():
-    st = [("입력", 32, .25, "#B0BEC5", "1@32×32"),
-          ("C1 conv5", 28, .6, TEAL2, "6@28×28"),
-          ("S2 pool", 14, .6, MINT2, "6@14×14"),
-          ("C3 conv5", 10, 1.1, TEAL2, "16@10×10"),
-          ("S4 pool", 5, 1.1, MINT2, "16@5×5"),
+    st = [("입력", 32, .25, SOFT, "1@32×32"),
+          ("C1\nconv5", 28, .6, TEAL2, "6@28×28"),
+          ("S2\npool", 14, .6, MINT2, "6@14×14"),
+          ("C3\nconv5", 10, 1.1, TEAL2, "16@10×10"),
+          ("S4\npool", 5, 1.1, MINT2, "16@5×5"),
           ("C5", 1, .2, TEAL, "120"),
           ("F6", 1, .2, TEAL, "84"),
           ("출력", 1, .2, ACC, "10")]
@@ -322,7 +327,7 @@ def fig_lenet():
     st2 = []
     for lab, s, d, c, sub in st:
         st2.append((lab, s if s > 1 else {"120": 20, "84": 15, "10": 6}[sub], d, c, sub))
-    pipeline(st2, "lenet_pipeline.png", (11.5, 3.8), 0.12, fs=14, stagger=0.6)
+    pipeline(st2, "lenet_pipeline.png", (11.5, 3.8), 0.12, fs=14, stagger=0.6, gap=0.8)
 
 
 # ---------------------------------------------------------------- 7. 이동 등변성 실험
@@ -344,13 +349,13 @@ def fig_equivariance():
         grid(ax, x, 0, oy, cell=1.0, fs=13, fmt="{:.0f}", title=lab, title_fs=14)
         ax.add_patch(FancyArrowPatch((5.4, oy - 2.5), (7.3, oy - 2.5), arrowstyle="-|>", mutation_scale=22,
                                      color=TEAL2, lw=2.4))
-        ax.text(6.35, oy - 2.95, "3×3 필터", ha="center", va="top", fontsize=12, color=GRAY)
+        ax.text(6.35, oy - 2.2, "3×3 필터", ha="center", va="bottom", fontsize=10, color=GRAY)
         am = np.unravel_index(np.argmax(y), y.shape)
         grid(ax, y, 7.8, oy - 1.0, cell=1.0, fs=13, fmt="{:.0f}", hl=(am[0], am[1], 1, 1),
              title="출력 (3×3)" if r == 0 else None, title_fs=14)
-        ax.add_patch(FancyArrowPatch((11.2, oy - 2.5), (12.7, oy - 2.5), arrowstyle="-|>", mutation_scale=22,
+        ax.add_patch(FancyArrowPatch((11.35, oy - 2.5), (12.75, oy - 2.5), arrowstyle="-|>", mutation_scale=22,
                                      color=TEAL2, lw=2.4))
-        ax.text(12.25, oy - 2.95, "전체 max", ha="center", va="top", fontsize=12, color=GRAY)
+        ax.text(12.05, oy - 2.2, "전체 max", ha="center", va="bottom", fontsize=10, color=GRAY)
         ax.add_patch(Rectangle((13.1, oy - 3.1), 1.3, 1.2, fc=ACC_BG, ec=ACC, lw=2))
         ax.text(13.75, oy - 2.5, f"{y.max():.0f}", ha="center", va="center", fontsize=17, color=ACC, fontweight="bold")
         ax.text(14.8, oy - 2.5, f"최댓값 위치\n{tuple(int(v) for v in am)}", ha="left", va="center", fontsize=12.5,
@@ -376,10 +381,12 @@ def fig_svm():
     ax.scatter(neg[:, 0], neg[:, 1], s=90, color=TEAL2, marker="s", zorder=3, label="클래스 −1")
     for p in ([3, 3], [4, 2], [2, 2], [1, 3]):
         ax.scatter(*p, s=320, facecolors="none", edgecolors=DARK, lw=1.8, zorder=4)
-    ax.annotate("서포트 벡터", xy=(1, 3), xytext=(-0.3, 4.6), fontsize=12, color=DARK,
+    ax.annotate("서포트 벡터", xy=(1, 3), xytext=(-0.3, 4.6), fontsize=12, color=DARK, zorder=5,
+                bbox=dict(boxstyle="round,pad=0.15", fc="white", ec="none"),
                 arrowprops=dict(arrowstyle="->", color=DARK))
     ax.annotate("", xy=(2.5, 2.5), xytext=(3.0, 3.0), arrowprops=dict(arrowstyle="<->", color=ACC, lw=2))
-    ax.text(3.05, 2.35, "마진", fontsize=13, color=ACC, fontweight="bold")
+    ax.text(3.05, 2.35, "마진", fontsize=13, color=ACC, fontweight="bold", zorder=5,
+            bbox=dict(boxstyle="round,pad=0.1", fc="white", ec="none"))
     ax.set_xlim(-0.5, 6.8)
     ax.set_ylim(-0.2, 5.6)
     ax.set_aspect("equal")
@@ -399,7 +406,7 @@ def fig_kernel():
     ax.scatter(a, np.zeros_like(a), s=120, color=ACC, zorder=3, label="클래스 +1")
     ax.scatter(b, np.zeros_like(b), s=120, color=TEAL2, marker="s", zorder=3, label="클래스 −1")
     ax.set_xlim(-3.6, 3.6)
-    ax.set_ylim(-0.7, 1.3); ax.set_yticks([])
+    ax.set_ylim(-0.6, 1.9); ax.set_yticks([])
     ax.set_xlabel("x", fontsize=12, labelpad=1)
     ax.set_title("1차원: 점 하나로는 두 부류를 나눌 수 없다", fontsize=13.5, color=TEAL)
     ax.legend(loc="upper center", ncol=2, frameon=False, fontsize=11.5, bbox_to_anchor=(0.5, 1.02))
@@ -421,7 +428,7 @@ def fig_kernel():
 
 # ---------------------------------------------------------------- 10. AlexNet 흐름
 def fig_alexnet():
-    st = [("입력", 227, .3, "#B0BEC5", "227×227×3"),
+    st = [("입력", 227, .3, SOFT, "227×227×3"),
           ("conv1\n11×11 s4", 55, .9, TEAL2, "55×55×96"),
           ("pool", 27, .9, MINT2, "27×27×96"),
           ("conv2\n5×5", 27, 1.5, TEAL2, "27×27×256"),
@@ -432,7 +439,7 @@ def fig_alexnet():
           ("FC6·7", 90, .25, TEAL, "4096"),
           ("FC8", 40, .25, ACC, "1000")]
     st = [(l, {227: 110}.get(s, s), d, c, sub) for l, s, d, c, sub in st]
-    pipeline(st, "alexnet_pipeline.png", (12.5, 3.9), 0.03, fs=15, stagger=0.75)
+    pipeline(st, "alexnet_pipeline.png", (15, 3.9), 0.03, fs=15, stagger=0.75, gap=1.2)
 
 
 # ---------------------------------------------------------------- 11. ReLU vs sigmoid gradient
@@ -475,18 +482,19 @@ def fig_ilsvrc():
     yrs = ["2010\nNEC-UIUC", "2011\nXRCE", "2012\nAlexNet", "2013\nClarifai", "2014\nGoogLeNet", "2015\nResNet"]
     err = [28.2, 25.8, 15.3, 11.7, 6.67, 3.57]
     depth = ["얕은 특징+분류기", "얕은 특징+분류기", "8층", "CNN", "22층", "152층"]
-    cols = [GRAY, GRAY, ACC, TEAL2, TEAL2, TEAL]
+    cols = [SOFT, SOFT, ACC, TEAL2, TEAL2, TEAL]
     fig, ax = plt.subplots(figsize=(7.6, 4.9))
     bars = ax.bar(yrs, err, color=cols, width=.62)
-    for b, e, d in zip(bars, err, depth):
+    for b, e, d, c in zip(bars, err, depth, cols):
         ax.text(b.get_x() + b.get_width() / 2, e + 0.7, f"{e}%", ha="center", fontsize=13, fontweight="bold", color=DARK)
-        ax.text(b.get_x() + b.get_width() / 2, e / 2, d, ha="center", va="center", fontsize=9.5, color="white",
+        ax.text(b.get_x() + b.get_width() / 2, e / 2, d, ha="center", va="center", fontsize=9.5,
+                color=DARK if c == SOFT else "white",
                 rotation=90 if len(d) > 4 else 0, fontweight="bold")
     ax.annotate("2014년 2위 VGG: 7.3% (16–19층)", xy=(4.3, 7.3), xytext=(2.75, 20.5), fontsize=10.5, color=TEAL2,
                 arrowprops=dict(arrowstyle="->", color=TEAL2))
     ax.set_ylabel("top-5 분류 오류율 (%)", fontsize=12)
     ax.set_ylim(0, 33)
-    ax.tick_params(axis="x", labelsize=10.5)
+    ax.tick_params(axis="x", labelsize=9.5)
     ax.spines[["top", "right"]].set_visible(False)
     ax.set_title("ILSVRC 분류 우승 팀의 top-5 오류", fontsize=13, color=TEAL)
     save(fig, "ilsvrc.png")
