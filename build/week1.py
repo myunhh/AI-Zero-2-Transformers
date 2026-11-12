@@ -9,7 +9,7 @@ from deckkit import *  # noqa
 A = lambda p: os.path.join(HERE, "assets", p)
 OUT = os.path.join(HERE, "..", "lectures", "week01_tensor_and_learning.pptx")
 
-d = Deck(1, "Tensor와 학습", date="2026-10-05")
+d = Deck(1, "Tensor와 학습", date="2026-10-05", theme="clean")
 
 # ============================================================ 도입
 d.question("규칙을 다 쓰지 않고 배울 수 있을까?",

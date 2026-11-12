@@ -1,6 +1,10 @@
-"""deckkit v2 — AICA Lab 템플릿(Lab-template.pptx)을 그대로 사용하는 강의 슬라이드 빌더.
+"""deckkit v2 — 템플릿 pptx를 그대로 사용하는 강의 슬라이드 빌더.
 
-템플릿 사용 원칙
+테마 두 가지 (Deck(theme=...)):
+  * "clean" — clean-template.pptx (make_clean_template.py로 생성). 로고 없는 흰 바탕, 청록 포인트.
+  * "aica"  — AICA Lab 템플릿(Lab-template.pptx). 아래 원칙은 이 테마 기준.
+
+AICA 템플릿 사용 원칙
   * 표지      = 템플릿 1번 슬라이드 (Title Slide) — 행사명/제목/발표자 개체 틀만 채움
   * 구역 표지 = 템플릿 '제목 슬라이드' 레이아웃 (AICA·SSU 로고 포함)
   * 본문      = 템플릿 'Title and Content' 레이아웃 — 제목 개체 틀 + 본문 개체 틀(템플릿 글머리표 ▪ / -)
@@ -35,6 +39,7 @@ from pptx.util import Inches, Pt
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TEMPLATE = os.path.join(HERE, "Lab-template.pptx")
+TEMPLATES = {"aica": TEMPLATE, "clean": os.path.join(HERE, "clean-template.pptx")}
 
 # 템플릿의 행사명 자리(표지 상단 'AICA Lab Meeting', 푸터)에 들어갈 이름
 EVENT = "AI Zero 2 Transformer"
@@ -715,28 +720,48 @@ COURSE = [
 
 
 class Deck:
-    def __init__(self, week, title, date, event=EVENT):
-        self.prs = Presentation(TEMPLATE)
+    def __init__(self, week, title, date, event=EVENT, theme="aica"):
+        self.prs = Presentation(TEMPLATES[theme])
+        self.theme = theme
         self.week = week
+        self.title = title
         self.date = date
         self.event = event
         s_title, s_proto, s_last = list(self.prs.slides)
         self.layout = s_proto.slide_layout
-        self.sec_layout = next(l for l in self.prs.slide_masters[1].slide_layouts if l.name == "제목 슬라이드")
-        # --- 표지: 템플릿 개체 틀 그대로, 글자만 교체
-        for sh in s_title.placeholders:
-            idx = sh.placeholder_format.idx
-            if idx == 10:
-                _replace_text(sh, event)
-            elif idx == 0:
-                _replace_text(sh, f"Week {week}. {title}")
-                n = text_units(f"Week {week}. {title}")
-                if n > 24:
-                    for p in sh.text_frame.paragraphs:
-                        for r in p.runs:
-                            r.font.size = Pt(max(22, int(32 * 24 / n)))
-            # idx 1 (발표자/이메일)은 템플릿 그대로
-        # --- 푸터 원본(날짜·발표자·쪽번호)
+        if theme == "clean":
+            self.sec_layout = next(l for l in self.prs.slide_masters[0].slide_layouts if l.name == "Section")
+            _, _, topic, era = COURSE[week - 1]
+            nxt = COURSE[week] if week < len(COURSE) else None
+            tokens = {"{EVENT}": event, "{TITLE}": f"Week {week}. {title}", "{SUB}": f"{topic}  ·  {era}",
+                      "{AUTHOR}": AUTHOR, "{DATE}": date,
+                      "{NEXT}": (f"다음 주 · Week {nxt[0]} — {nxt[1].replace(chr(10), ' ')}" if nxt
+                                 else "여섯 질문을 모두 지나왔습니다 — 수고하셨습니다")}
+            for sl in (s_title, s_last):
+                for sh in sl.shapes:
+                    if sh.has_text_frame:
+                        for t in sh._element.iter(qn("a:t")):
+                            for k, v in tokens.items():
+                                if k in (t.text or ""):
+                                    t.text = t.text.replace(k, v)
+            self._footer_text = f"{event}  ·  Week {week}. {title}"
+        else:
+            self.sec_layout = next(l for l in self.prs.slide_masters[1].slide_layouts if l.name == "제목 슬라이드")
+            # --- 표지: 템플릿 개체 틀 그대로, 글자만 교체
+            for sh in s_title.placeholders:
+                idx = sh.placeholder_format.idx
+                if idx == 10:
+                    _replace_text(sh, event)
+                elif idx == 0:
+                    _replace_text(sh, f"Week {week}. {title}")
+                    n = text_units(f"Week {week}. {title}")
+                    if n > 24:
+                        for p in sh.text_frame.paragraphs:
+                            for r in p.runs:
+                                r.font.size = Pt(max(22, int(32 * 24 / n)))
+                # idx 1 (발표자/이메일)은 템플릿 그대로
+            self._footer_text = None
+        # --- 푸터 원본(날짜·발표자·쪽번호 / clean: 과정명·쪽번호)
         self._footer = [copy.deepcopy(sp._element) for sp in s_proto.shapes
                         if not (sp.is_placeholder and sp.placeholder_format.idx in (0, 1))]
         self._ctxs = []
@@ -750,9 +775,10 @@ class Deck:
                 tf = ph.text_frame
                 tf.text = title
                 n = text_units(title)
+                base = 28 if self.theme == "clean" else 32
                 if n > 30:
                     for r in tf.paragraphs[0].runs:
-                        r.font.size = Pt(max(20, int(32 * 30 / n)))
+                        r.font.size = Pt(max(20, int(base * 30 / n)))
         tree = s.shapes._spTree
         for el in self._footer:
             el = copy.deepcopy(el)
@@ -761,7 +787,9 @@ class Deck:
                     t.text = self.date
                 elif (t.text or "").strip() == "AICA Lab Meeting":
                     t.text = self.event
-            if el.find(".//" + qn("p:ph")) is None:  # 발표자 텍스트 상자: 두 자리 쪽번호와 겹치지 않게 왼쪽으로
+                elif t.text == "{FOOTER}":
+                    t.text = self._footer_text
+            if self.theme == "aica" and el.find(".//" + qn("p:ph")) is None:  # 발표자 텍스트 상자: 두 자리 쪽번호와 겹치지 않게 왼쪽으로
                 off = el.find(".//" + qn("a:off"))
                 if off is not None:
                     off.set("x", str(int(off.get("x")) - int(Inches(0.3))))
@@ -801,14 +829,15 @@ class Deck:
                 sh.top = sh.top + dy
 
     def section(self, title, subtitle="", notes=None):
-        """템플릿 '제목 슬라이드' 레이아웃(로고 포함)으로 만든 구역 표지."""
+        """구역 표지 — aica: '제목 슬라이드' 레이아웃(로고 포함, 가운데 정렬) / clean: 'Section' 레이아웃(왼쪽 정렬)."""
         s = self.prs.slides.add_slide(self.sec_layout)
+        al = "l" if self.theme == "clean" else "c"
         for ph in s.placeholders:
             idx = ph.placeholder_format.idx
             tf = ph.text_frame
             if idx == 0:
                 lines = title.split("\n")
-                fill(tf, lines, size=40 if len(lines) == 1 else 36, bold=True, color=INK, align="c",
+                fill(tf, lines, size=40 if len(lines) == 1 else 36, bold=True, color=INK, align=al,
                      anchor="b", gap=0.1, set_face=True)
                 if len(lines) > 1:
                     for r in tf.paragraphs[0].runs:
@@ -816,7 +845,7 @@ class Deck:
                         r.font.color.rgb = rgb(TEAL)
             elif idx == 1:
                 if subtitle:
-                    fill(tf, subtitle.split("\n"), size=20, color=GRAY, align="c", gap=0.2)
+                    fill(tf, subtitle.split("\n"), size=20, color=GRAY, align=al, gap=0.2)
                 else:
                     ph._element.getparent().remove(ph._element)
         if notes:
