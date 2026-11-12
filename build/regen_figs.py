@@ -38,7 +38,14 @@ MODULES = {"week1_assets.py": ["tensor_ranks", "batch_axis", "broadcasting", "ma
                              "fig_mem", "fig_flops", "fig_archs", "fig_vit", "fig_genealogy"]}
 
 ONLY = set(sys.argv[1:])
-for script, funcs in MODULES.items():
+sys.path.insert(0, HERE)
+import deckkit  # noqa: E402
+# clean(Apple) 테마로 바꾼 주차의 그림 — 테마 전환은 되돌릴 수 없으므로 마지막에 그린다
+CLEAN = {"week1_assets.py", "figs_w1.py"}
+order = sorted(MODULES.items(), key=lambda kv: kv[0] in CLEAN)
+for script, funcs in order:
+    if script in CLEAN and deckkit.STYLE != "apple":
+        deckkit.use_theme("clean")
     if ONLY and script not in ONLY and os.path.basename(script) not in ONLY:
         continue
     path = os.path.join(HERE, script)
@@ -54,5 +61,24 @@ for script, funcs in MODULES.items():
         os.chdir(cwd)
 
 if not ONLY or "figs_w1.py" in ONLY:
+    deckkit.use_theme("clean")
     _cur[0] = 1.3
     runpy.run_path(os.path.join(HERE, "figs_w1.py"), run_name="__main__")
+
+# 1주차 도착점 슬라이드는 5주차 구조도를 쓰므로 clean 색으로 사본을 따로 그린다 (5주차 원본은 그대로 둔다)
+if not ONLY or "figs_w1.py" in ONLY or "week1_assets.py" in ONLY:
+    import shutil
+    deckkit.use_theme("clean")
+    w5 = os.path.join(HERE, "assets", "week5", "transformer_arch.png")
+    keep = w5 + ".keep"
+    shutil.copy(w5, keep)
+    cwd = os.getcwd()
+    os.chdir(HERE)
+    try:
+        _cur[0] = SCALE.get("fig_arch", DEFAULT)
+        runpy.run_path(os.path.join(HERE, "week5_assets.py"), run_name="figmod")["fig_arch"]()
+    finally:
+        os.chdir(cwd)
+    shutil.move(w5, os.path.join(HERE, "assets", "week1", "transformer_arch.png"))
+    shutil.move(keep, w5)
+    print("week1/transformer_arch.png (clean copy of week5 fig_arch)")

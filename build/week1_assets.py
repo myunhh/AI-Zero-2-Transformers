@@ -10,8 +10,8 @@ import numpy as np  # noqa: E402
 
 OUT = os.path.join(HERE, "assets", "week1")
 T, T2, A, G, D, M, L = (PALETTE_HEX[k] for k in ("TEAL", "TEAL2", "ACCENT", "GRAY", "DARK", "MINT", "LINE"))
-MINT2 = "#CFE8EE"
-ACC_BG = "#FDF1E8"
+MINT2 = PALETTE_HEX.get("MINT2", "#CFE8EE")
+ACC_BG = PALETTE_HEX.get("ACC_BG", "#FDF1E8")
 
 plt = mpl_setup()
 plt.rcParams["font.family"] = ["NanumGothic", "DejaVu Sans"]  # 한글 + 기호(−, ŷ, ᵀ, ₕ) fallback
@@ -202,7 +202,7 @@ def batched_matmul():
 
     def stack(x, y, rows, cols, label, n=3, fc=M, ec=T):
         for i in reversed(range(n)):
-            _grid(ax, x + i * 0.22, y + i * 0.22, rows, cols, c=c, fc=fc if i == 0 else "#F4FAFB",
+            _grid(ax, x + i * 0.22, y + i * 0.22, rows, cols, c=c, fc=fc if i == 0 else PALETTE_HEX.get("BG", "#F4FAFB"),
                   ec=ec if i == 0 else T2, lw=0.8)
         ax.text(x + cols * c / 2 + 0.2, y + 0.22 * n + 0.15, label, ha="center", fontsize=14, color=T, weight="bold")
 

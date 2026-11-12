@@ -69,6 +69,10 @@ W = X1 - X0
 Y_TOP = 0.92          # 헤더(0.745") 바로 아래
 Y1 = 6.98             # 푸터 위
 
+STYLE = "aica"       # use_theme("clean") → "apple"
+RADIUS = 0.1
+ARROW = SKY
+
 STAGES = {
     "문제": (ORANGE, WHITE),
     "아이디어": (CYAN, WHITE),
@@ -192,8 +196,9 @@ def _clear_bullets(pPr):
             pPr.remove(el)
 
 
-def _bullet(p, lvl, color=TEAL):
-    """템플릿과 같은 글머리표: 1수준 ▪(Wingdings §), 2수준 -."""
+def _bullet(p, lvl, color=None):
+    """글머리표 — aica: 1수준 ▪(Wingdings §), 2수준 - / apple: 회색 • 와 –."""
+    color = color or (SKY if STYLE == "apple" else TEAL)
     pPr = p._p.get_or_add_pPr()
     _clear_bullets(pPr)
     ind = Inches(0.26)
@@ -202,12 +207,15 @@ def _bullet(p, lvl, color=TEAL):
     c = pPr.makeelement(qn("a:buClr"), {})
     c.append(c.makeelement(qn("a:srgbClr"), {"val": color}))
     pPr.append(c)
-    if lvl == 0:
+    if lvl == 0 and STYLE == "apple":
+        pPr.append(pPr.makeelement(qn("a:buFont"), {"typeface": "Arial"}))
+        pPr.append(pPr.makeelement(qn("a:buChar"), {"char": "•"}))
+    elif lvl == 0:
         pPr.append(pPr.makeelement(qn("a:buFont"), {"typeface": "Wingdings", "pitchFamily": "2", "charset": "2"}))
         pPr.append(pPr.makeelement(qn("a:buChar"), {"char": "§"}))
     else:
         pPr.append(pPr.makeelement(qn("a:buFont"), {"typeface": "Arial"}))
-        pPr.append(pPr.makeelement(qn("a:buChar"), {"char": "-"}))
+        pPr.append(pPr.makeelement(qn("a:buChar"), {"char": "–" if STYLE == "apple" else "-"}))
 
 
 def _no_bullet(p):
@@ -361,8 +369,10 @@ class S:
              anchor=anchor, gap=gap, spacing=spacing, margin=margin)
         return tb
 
-    def rect(self, box, fill_color=TINT, line=None, radius=0.1, shape=MSO_SHAPE.ROUNDED_RECTANGLE,
+    def rect(self, box, fill_color="__tint", line=None, radius=None, shape=MSO_SHAPE.ROUNDED_RECTANGLE,
              line_w=1.0, dash=False):
+        fill_color = TINT if fill_color == "__tint" else fill_color
+        radius = RADIUS if radius is None else radius
         shp = self.s.shapes.add_shape(shape, Inches(box.x), Inches(box.y), Inches(box.w), Inches(box.h))
         if fill_color:
             shp.fill.solid()
@@ -394,7 +404,8 @@ class S:
              margin=margin, gap=gap)
         return shp
 
-    def arrow(self, x1, y1, x2, y2, color=SKY, width=2.0):
+    def arrow(self, x1, y1, x2, y2, color=None, width=2.0):
+        color = color or ARROW
         c = self.s.shapes.add_connector(MSO_CONNECTOR.STRAIGHT, Inches(x1), Inches(y1), Inches(x2), Inches(y2))
         c.line.color.rgb = rgb(color)
         c.line.width = Pt(width)
@@ -427,8 +438,7 @@ class S:
             if need < box.h:
                 rest = Box(box.x, box.y + need + 0.25, box.w, box.h - need - 0.25)
                 box = Box(box.x, box.y, box.w, need)
-        fillc, headc, line = {"teal": (TINT, TEAL, None), "accent": (ORANGE_TINT, ORANGE, None),
-                              "plain": (WHITE, TEAL, LINE), "dark": (TEAL, WHITE, None)}[tone]
+        fillc, headc, line = _tones()[tone]
         self.rect(box, fill_color=fillc, line=line)
         bodyc = WHITE if tone == "dark" else INK
         inner = box.inset(0.18, 0.14)
@@ -515,8 +525,7 @@ class S:
     def _flow_box(self, b, st, body_size, head_size):
         st = st if isinstance(st, dict) else {"head": st}
         tone = st.get("tone", "teal")
-        fillc, headc, line = {"teal": (TINT, TEAL, None), "accent": (ORANGE_TINT, ORANGE, ORANGE),
-                              "plain": (WHITE, TEAL, LINE), "dark": (TEAL, WHITE, None)}[tone]
+        fillc, headc, line = _tones(flow=True)[tone]
         self.rect(b, fill_color=fillc, line=line)
         inner = b.inset(0.1, 0.1)
         if st.get("body"):
@@ -530,9 +539,9 @@ class S:
             self.textbox(st["head"], inner, size=head_size, bold=True, color=headc, align="c",
                          anchor="m", min_size=10, margin=0.02, gap=0)
 
-    def formula(self, lines, box, size=24, min_size=13, fill_color=CODE_BG):
+    def formula(self, lines, box, size=24, min_size=13, fill_color=None):
         lines = [lines] if isinstance(lines, str) else lines
-        self.rect(box, fill_color=fill_color, line=LINE)
+        self.rect(box, fill_color=fill_color or CODE_BG, line=None if STYLE == "apple" else LINE)
         def mono_units(t):
             return sum(1.0 if (0xAC00 <= ord(c) <= 0xD7A3) else 0.61 for c in plain(t))
         longest = max(mono_units(l) for l in lines)
@@ -571,8 +580,12 @@ class S:
             if need < box.h:
                 box = Box(box.x, box.y, box.w, max(0.6, need))
         self.last_callout_box = box
-        fillc, color, line = {"key": (TEAL, WHITE, None), "tip": (TINT, INK, SKY),
-                              "warn": (ORANGE_TINT, INK, ORANGE)}[kind]
+        if STYLE == "apple":
+            fillc, color, line = {"key": (TINT, INK, None), "tip": (TINT, INK, None),
+                                  "warn": (ORANGE_TINT, INK, None)}[kind]
+        else:
+            fillc, color, line = {"key": (TEAL, WHITE, None), "tip": (TINT, INK, SKY),
+                                  "warn": (ORANGE_TINT, INK, ORANGE)}[kind]
         b = self.rect(box, fill_color=fillc, line=line)
         self.label(b, text, size=size, color=color, bold=(kind == "key"), align="c" if kind == "key" else "l",
                    margin=0.2)
@@ -581,7 +594,12 @@ class S:
     def takeaway(self, text, size=16):
         """영역 맨 아래 한 줄 결론 바. 영역을 줄여 준다."""
         b = Box(X0, Y1 - 0.58, W, 0.58)
-        self.callout(text, b, kind="key", size=size)
+        if STYLE == "apple":  # 상자 없이 굵은 한 줄 — 위에 가는 선
+            self.rect(Box(X0, b.y, W, 0.012), fill_color=LINE, shape=MSO_SHAPE.RECTANGLE)
+            self.textbox(text, Box(X0, b.y + 0.06, W, 0.52), size=size + 1, bold=True, color=TEAL,
+                         align="c", anchor="m", min_size=11, gap=0)
+        else:
+            self.callout(text, b, kind="key", size=size)
         self.area = Box(self.area.x, self.area.y, self.area.w, self.area.h - 0.8)
         return b
 
@@ -621,16 +639,23 @@ class S:
                 cell.margin_top = cell.margin_bottom = Inches(0.03)
                 cell.vertical_anchor = MSO_ANCHOR.MIDDLE
                 cell.fill.solid()
+                apple = STYLE == "apple"
                 if i == 0:
-                    cell.fill.fore_color.rgb = rgb(TEAL)
+                    cell.fill.fore_color.rgb = rgb(WHITE if apple else TEAL)
                 elif (i - 1) in hl:
                     cell.fill.fore_color.rgb = rgb(ORANGE_TINT)
                 else:
-                    cell.fill.fore_color.rgb = rgb(WHITE if i % 2 else TINT)
-                a = "c" if i == 0 else (align[j] if align else "l")
-                fill(cell.text_frame, [str(val)], size=sz, color=WHITE if i == 0 else INK,
+                    cell.fill.fore_color.rgb = rgb(WHITE if (i % 2 or apple) else TINT)
+                a = ("l" if apple and not align else "c") if i == 0 else (align[j] if align else "l")
+                if i == 0 and apple and align:
+                    a = align[j]
+                fill(cell.text_frame, [str(val)], size=sz,
+                     color=(GRAY if apple else WHITE) if i == 0 else INK,
                      bold=(i == 0 or (j == 0 and first_col_bold)), align=a, margin=0.04, gap=0)
-                _cell_border(cell)
+                if apple:
+                    _cell_rules(cell, header=(i == 0), last=(i == nr - 1))
+                else:
+                    _cell_border(cell)
         return gt
 
     def code(self, code, box, size=14, min_size=9, fit_h=True):
@@ -642,7 +667,8 @@ class S:
         if fit_h:
             box = Box(box.x, box.y, box.w, min(box.h, len(lines) * sz * 1.22 / 72 + 0.4))
         self.last_code_box = box
-        self.rect(box, fill_color=CODE_BG, line=LINE, radius=0.06)
+        self.rect(box, fill_color=CODE_BG, line=None if STYLE == "apple" else LINE,
+                  radius=RADIUS if STYLE == "apple" else 0.06)
         tb = self.s.shapes.add_textbox(Inches(box.x + 0.12), Inches(box.y + 0.12), Inches(box.w - 0.24),
                                        Inches(box.h - 0.2))
         tf = tb.text_frame
@@ -687,10 +713,40 @@ class S:
                 cb = Box(x, line_y + 0.3, cw, min(cb.h, max(need_max, 1.4)))
             self.rect(cb, fill_color=ORANGE_TINT if i in hl else TINT)
             inner = cb.inset(0.08, 0.1)
-            self.textbox(head, Box(inner.x, inner.y, inner.w, 0.75), size=15, bold=True, color=col,
+            self.textbox(head, Box(inner.x, inner.y, inner.w, 0.75), size=15, bold=True,
+                         color=(ORANGE if i in hl else INK) if STYLE == "apple" else col,
                          align="c", anchor="m", min_size=10, margin=0.02, gap=0)
             self.textbox(body, Box(inner.x, inner.y + 0.82, inner.w, inner.h - 0.82), size=body_size,
                          min_size=9, margin=0.02, gap=0.25)
+
+
+def _cell_rules(cell, header=False, last=False):
+    """apple 표: 세로선 없이 가로 구분선만 — 머리글 아래는 진하게."""
+    tcPr = cell._tc.get_or_add_tcPr()
+    fills = tcPr.findall(qn("a:solidFill"))
+    for f in fills:
+        tcPr.remove(f)
+    for tag in ("a:lnL", "a:lnR", "a:lnT", "a:lnB"):
+        if tag == "a:lnB":
+            ln = tcPr.makeelement(qn(tag), {"w": "12700" if header else "6350"})
+            sf = ln.makeelement(qn("a:solidFill"), {})
+            sf.append(sf.makeelement(qn("a:srgbClr"), {"val": INK if header else LINE}))
+            ln.append(sf)
+        else:
+            ln = tcPr.makeelement(qn(tag), {"w": "0"})
+            ln.append(ln.makeelement(qn("a:noFill"), {}))
+        tcPr.append(ln)
+    for f in fills:
+        tcPr.append(f)
+
+
+def _tones(flow=False):
+    """카드·흐름 상자 색: (채움, 제목색, 테두리)."""
+    if STYLE == "apple":
+        return {"teal": (TINT, INK, None), "accent": (ORANGE_TINT, ORANGE, None),
+                "plain": (WHITE, INK, LINE), "dark": (INK, WHITE, None)}
+    return {"teal": (TINT, TEAL, None), "accent": (ORANGE_TINT, ORANGE, ORANGE if flow else None),
+            "plain": (WHITE, TEAL, LINE), "dark": (TEAL, WHITE, None)}
 
 
 def _cell_border(cell, color=LINE):
@@ -733,7 +789,7 @@ class Deck:
             self.sec_layout = next(l for l in self.prs.slide_masters[0].slide_layouts if l.name == "Section")
             _, _, topic, era = COURSE[week - 1]
             nxt = COURSE[week] if week < len(COURSE) else None
-            tokens = {"{EVENT}": event, "{TITLE}": f"Week {week}. {title}", "{SUB}": f"{topic}  ·  {era}",
+            tokens = {"{EVENT}": event, "{WEEK}": f"Week {week}", "{TITLE}": title, "{SUB}": f"{topic} — {era}",
                       "{AUTHOR}": AUTHOR, "{DATE}": date,
                       "{NEXT}": (f"다음 주 · Week {nxt[0]} — {nxt[1].replace(chr(10), ' ')}" if nxt
                                  else "여섯 질문을 모두 지나왔습니다 — 수고하셨습니다")}
@@ -744,6 +800,8 @@ class Deck:
                             for k, v in tokens.items():
                                 if k in (t.text or ""):
                                     t.text = t.text.replace(k, v)
+                                    if k == "{TITLE}" and text_units(v) > 16:
+                                        t.getparent().find(qn("a:rPr")).set("sz", str(int(max(40, 60 * 16 / text_units(v))) * 100))
             self._footer_text = f"{event}  ·  Week {week}. {title}"
         else:
             self.sec_layout = next(l for l in self.prs.slide_masters[1].slide_layouts if l.name == "제목 슬라이드")
@@ -775,7 +833,7 @@ class Deck:
                 tf = ph.text_frame
                 tf.text = title
                 n = text_units(title)
-                base = 28 if self.theme == "clean" else 32
+                base = 30 if self.theme == "clean" else 32
                 if n > 30:
                     for r in tf.paragraphs[0].runs:
                         r.font.size = Pt(max(20, int(base * 30 / n)))
@@ -797,11 +855,16 @@ class Deck:
         if notes:
             s.notes_slide.notes_text_frame.text = notes
         ctx = S(self, s, has_lead=bool(lead) or bool(stage))
+        apple = STYLE == "apple"
         if lead:
             lw = W - (1.55 if stage else 0)
-            ctx.textbox(lead, Box(X0, Y_TOP, lw, 0.55), size=19, bold=True, color=TEAL, anchor="m",
-                        min_size=13, margin=0.02, gap=0)
-        if stage:
+            ctx.textbox(lead, Box(X0, Y_TOP, lw, 0.55), size=18 if apple else 19, bold=not apple,
+                        color=GRAY if apple else TEAL, anchor="m", min_size=13, margin=0.0 if apple else 0.02, gap=0)
+        if stage and apple:  # 채운 칩 대신 작은 글자 표지
+            ctx.textbox(stage, Box(X1 - 1.3, Y_TOP + 0.08, 1.3, 0.4), size=13, bold=True,
+                        color=ORANGE if stage == "문제" else SKY, align="r", anchor="m", margin=0, gap=0,
+                        autofit=False)
+        elif stage:
             fc, tc = STAGES[stage]
             chip = ctx.rect(Box(X1 - 1.3, Y_TOP + 0.08, 1.3, 0.4), fill_color=fc, radius=0.2)
             fill(chip.text_frame, [stage], size=13, color=tc, bold=True, align="c", anchor="m", margin=0.02, gap=0)
@@ -837,15 +900,18 @@ class Deck:
             tf = ph.text_frame
             if idx == 0:
                 lines = title.split("\n")
-                fill(tf, lines, size=40 if len(lines) == 1 else 36, bold=True, color=INK, align=al,
+                big = 44 if STYLE == "apple" else (40 if len(lines) == 1 else 36)
+                fill(tf, lines, size=big, bold=True, color=INK, align=al,
                      anchor="b", gap=0.1, set_face=True)
                 if len(lines) > 1:
                     for r in tf.paragraphs[0].runs:
                         r.font.size = Pt(22)
                         r.font.color.rgb = rgb(TEAL)
+                    if STYLE == "apple":
+                        tf.paragraphs[1].space_before = Pt(6)
             elif idx == 1:
                 if subtitle:
-                    fill(tf, subtitle.split("\n"), size=20, color=GRAY, align=al, gap=0.2)
+                    fill(tf, subtitle.split("\n"), size=22 if STYLE == "apple" else 20, color=GRAY, align=al, gap=0.2)
                 else:
                     ph._element.getparent().remove(ph._element)
         if notes:
@@ -863,7 +929,7 @@ class Deck:
             cur = wk == current
             done = wk < current
             ctx.rect(b, fill_color=TEAL if cur else (TINT2 if done else TINT),
-                     line=None if cur else (None if done else LINE))
+                     line=None if (cur or done or STYLE == "apple") else LINE)
             inner = b.inset(0.08, 0.1)
             col = WHITE if cur else (TEAL if done else GRAY)
             h = inner.h
@@ -1058,3 +1124,26 @@ HEX = {k: "#" + v for k, v in dict(TEAL=TEAL, SKY=SKY, CYAN=CYAN, AQUA=AQUA, ORA
 # 그림 스크립트(v1)용 호환 팔레트 — 템플릿 색으로 매핑
 PALETTE_HEX = {"TEAL": "#" + TEAL, "TEAL2": "#2A93B5", "MINT": "#E3F0F6", "DARK": "#" + INK,
                "GRAY": "#" + GRAY, "ACCENT": "#" + ORANGE, "LINE": "#" + LINE}
+
+
+# ================================================================ theme
+APPLE_PALETTE = dict(TEAL="0071E3", SKY="86868B", CYAN="0071E3", AQUA="2997FF", ORANGE="E8590C", INK="1D1D1F",
+                     GRAY="6E6E73", LINE="D2D2D7", TINT="F5F5F7", TINT2="E8E8ED", ORANGE_TINT="FFF3EA",
+                     CODE_BG="F5F5F7")
+
+
+def use_theme(name):
+    """'clean' = Apple 디자인 원칙(여백·절제·한 가지 강조색·글자 위계)을 따르는 색과 모양.
+    week 스크립트에서 `from deckkit import *` 보다 먼저 부른다."""
+    g = globals()
+    if name != "clean":
+        return
+    g.update(APPLE_PALETTE)
+    g.update(STYLE="apple", RADIUS=0.16, ARROW="C7C7CC", X0=0.6, X1=12.73)
+    g["W"] = g["X1"] - g["X0"]
+    for k in STAGES:
+        STAGES[k] = (TINT, INK)
+    HEX.update({k: "#" + g[k] for k in HEX})
+    PALETTE_HEX.update({"TEAL": "#0071E3", "TEAL2": "#5AA9F0", "MINT": "#E8F1FC", "DARK": "#1D1D1F",
+                        "GRAY": "#6E6E73", "ACCENT": "#E8590C", "LINE": "#D2D2D7",
+                        "MINT2": "#D6E6FA", "ACC_BG": "#FFF3EA", "BG": "#F5F5F7"})

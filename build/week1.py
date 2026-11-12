@@ -4,6 +4,8 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+import deckkit  # noqa: E402
+deckkit.use_theme("clean")  # Apple 디자인 원칙 테마 — import * 보다 먼저
 from deckkit import *  # noqa
 
 A = lambda p: os.path.join(HERE, "assets", p)
@@ -28,7 +30,7 @@ s.bullets(["입력이 **어떤 숫자 배열**로 바뀌는지",
            "각 위치가 **어떤 정보를 참조**할 수 있는지",
            "어떻게 **다음 토큰**을 하나씩 만들어 내는지",
            "그리고 이 모든 것이 **왜 필요해졌는지** — 1943년부터의 흐름으로"], L, gap=0.55)
-s.image(A("week5/transformer_arch.png"), R)
+s.image(A("week1/transformer_arch.png"), R)  # 5주차 그림을 1주차 색으로 다시 그린 사본
 
 s = d.slide("공부하는 방법", lead="모든 주제를 같은 네 단계로 따라간다", stage="도입",
             notes="원자료가 제시하는 학습 루프: 문제 → 아이디어 → 계산 → 검증. 슬라이드 오른쪽 위 태그가 지금 어느 단계인지 알려준다. "
@@ -350,14 +352,14 @@ s = d.slide("경사하강법 한 걸음", lead="θ ← θ − η · ∇L : 기�
 s.takeaway("한 걸음 만에 손실 41 → 1.13 — 이 반복이 ‘학습’의 전부다")
 top, bot = s.area.top(1.0, gap=0.3)
 s.formula("θ ← θ − η · ∇L", top, size=28)
-L, R = bot.cols(0.44, gap=0.4)
+L, R = bot.cols(0.4, gap=0.35)
 s.symbols([("θ", "파라미터 (w, b)"), ("η", "학습률: 보폭 (여기선 0.05)"),
            ("∇L", "기울기 (∂L/∂w, ∂L/∂b) — 손실이 커지는 방향"),
            ("−η·∇L", "그 반대로 보폭만큼 (음수 기울기 → 값을 키운다)")], L, size=15, key_w=1.35)
 s.table(["", "w", "b", "손실 L"], [["이동 전", "0.00", "0.00", "41.00"],
                                   ["기울기", "−35", "−12", ""],
                                   ["이동 후", "0 − 0.05·(−35) = **1.75**", "0 − 0.05·(−12) = **0.60**", "**1.13**"]],
-        R, size=15, align="cccc", highlight=[2])
+        R, size=15, align="cccc", highlight=[2], widths=[1.0, 1.55, 1.55, 0.9])
 
 s = d.slide("학습률: 보폭이 결과를 바꾼다", lead="너무 작으면 느리고, 너무 크면 골짜기를 넘어 발산한다", stage="검증",
             notes="원자료의 인터랙티브 예제: L(w) = (w−3)², 시작 w=−2. η=0.2는 천천히 수렴, η=0.5는 이 특정 이차함수에서 한 번에 도착, "

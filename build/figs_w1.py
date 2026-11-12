@@ -35,7 +35,7 @@ fig.savefig(os.path.join(OUT, "data_scatter.png")); plt.close(fig)
 fig, (a1, a2) = plt.subplots(1, 2, figsize=(11, 4.2))
 a1.scatter(x, y, s=80, color=HEX["ORANGE"], zorder=3, label="데이터")
 xs = np.linspace(0, 5, 50)
-cols = {0: "#B8C4CC", 1: HEX["SKY"], 2: HEX["CYAN"], 500: HEX["TEAL"]}
+cols = {0: "#C7CDD2", 1: HEX["SKY"], 2: HEX["AQUA"], 500: HEX["TEAL"]}
 for st, (ww, bb, LL) in hist.items():
     a1.plot(xs, ww * xs + bb, color=cols[st], lw=2.5 if st == 500 else 1.8,
             label=f"step {st}: w={ww:.2f}, b={bb:.2f}")
