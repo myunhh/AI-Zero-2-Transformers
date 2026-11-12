@@ -4,12 +4,14 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+import deckkit  # noqa: E402
+deckkit.use_theme("clean")  # Apple 디자인 원칙 테마 — import * 보다 먼저
 from deckkit import *  # noqa
 
 A = lambda p: os.path.join(HERE, "assets", p)
 OUT = os.path.join(HERE, "..", "lectures", "week04_rnn_lstm_seq2seq.pptx")
 
-d = Deck(4, "언어·순서·기억: RNN에서 Seq2Seq까지", date="2026-10-26")
+d = Deck(4, "언어·순서·기억: RNN에서 Seq2Seq까지", date="2026-10-26", theme="clean")
 
 # ============================================================ 도입
 d.question("순서를 어떻게 표현하고,\n먼 정보를 어떻게 기억할까?",
@@ -24,7 +26,7 @@ d.bridge(["CNN: 지역성·가중치 공유라는 **구조적 가정**", "깊은
 
 d.roadmap(["문장을 숫자로: 토큰과 임베딩", "RNN: 순서를 따라 상태 전달 (1986/1990)", "장기 의존성: 왜 먼 정보를 잃나 (1991/1994)",
            "LSTM: 보존·쓰기·읽기의 조절 (1997)", "단어의 의미를 학습하기 (2003/2013)", "Seq2Seq: 길이가 다른 입출력 (2014)"],
-          ["토큰 ID와 **임베딩 lookup**을 구분하고 shape (B, N) → (B, N, d)를 말한다",
+          ["토큰 ID와 **임베딩 lookup**을 구분하고 shape (B,\u00a0N) → (B,\u00a0N,\u00a0d)를 말한다",
            "RNN 상태 갱신을 **손으로** 두세 단계 계산한다",
            "장기 의존성이 어려운 **세 가지 이유**를 구분한다",
            "LSTM의 c와 h, **덧셈 경로**의 역할을 설명한다",
@@ -78,9 +80,9 @@ s.table(["단위", "장점", "비용"], [["단어 (word)", "익숙한 의미 단
                                  ["부분단어 (subword)", "어휘 크기와 길이의 **절충**", "언어·학습 데이터에 따라 분할이 달라짐"]],
         Box(s.area.x, s.area.y, s.area.w, 2.3), widths=[2.2, 4.3, 4.3], size=16)
 L, R = Box(s.area.x, s.area.y + 2.6, s.area.w, s.area.h - 2.6).cols(0.5, gap=0.4)
-s.callout("예: unhappiness → un + happi + ness\n(분할 설명용 예시 — 특정 tokenizer의 실제 결과가 아님)", L, kind="tip", size=16)
+s.callout("예: unhappiness → un + happi + ness\n(분할 설명용 예시 — 특정 tokenizer의 실제 결과가 아님)", L, kind="tip", size=15)
 s.callout("==주의== tokenizer와 모델 가중치는 **짝**이다. ID 매핑을 바꾸면 학습한 임베딩과 출력의 의미가 어긋난다.", R,
-          kind="warn", size=16)
+          kind="warn", size=15)
 
 s = d.slide("PyTorch: nn.Embedding", lead="(B, N) 정수 → (B, N, d) 벡터. 파라미터는 |V| × d", stage="코드",
             notes="nn.Embedding(num_embeddings=|V|, embedding_dim=d). 어휘 10,000개, d=8이면 파라미터 80,000개. "
@@ -126,7 +128,7 @@ s = d.slide("아이디어: 같은 셀을 반복하며 상태를 넘긴다", lead
                   "모든 시점이 같은 가중치 W_x, W_h, b를 쓰므로 길이가 달라도 같은 규칙이 적용된다(CNN이 위치마다 같은 필터를 쓴 것과 비슷한 공유). "
                   "Jordan(1986)은 출력을 되먹임하는 구조를, Elman(1990) 'Finding Structure in Time'은 은닉 상태를 되먹임하는 단순 순환망을 제시했다. "
                   "이전 상태가 다르므로 같은 토큰도 문맥에 따라 다른 표현을 갖게 된다.")
-top, bot = s.area.top(2.6, gap=0.3)
+top, bot = s.area.top(3.1, gap=0.3)
 s.image(A("week4/rnn_unrolled.png"), top)
 s.bullets(["h = 지금까지 읽은 내용의 **요약 메모**", "모든 시점이 **같은 W_x, W_h, b** — 길이가 달라도 같은 규칙",
            "이전 상태가 다르므로 **같은 토큰도 다른 표현**", "Jordan (1986) · **Elman (1990)** ‘Finding Structure in Time’"], bot, size=16)
@@ -163,7 +165,7 @@ s.callout("`out[:, -1]`와 `h_n[0]`은 같은 값이다 (한 층, 단방향) —
 tb = s.last_callout_box
 s.flow([{"head": "x  (B, N, d)"}, {"head": "nn.RNN", "tone": "dark"}, {"head": "out  (B, N, d_h)"}],
        Box(L.x, tb.b + 0.3, L.w, 0.7), head_size=16, gap=0.5)
-s.bullets(["`out`: 시점마다의 h → 문맥 표현", "`h_n`: 마지막 h → 문장 **요약**", "파라미터 416 = 8·16 + 16·16 + 16 + 16",
+s.bullets(["`out`: 시점마다의 h → 문맥 표현", "`h_n`: 마지막 h → 문장 **요약**", "파라미터 416 = 8·16\u00a0+\u00a016·16\u00a0+\u00a016\u00a0+\u00a016",
            ("길이 N과 **무관**", 1), "nn.LSTM은 4배: 1,664"], R, size=18)
 
 # ============================================================ Part 3
@@ -173,7 +175,7 @@ s = d.slide("시간을 거슬러 기울기가 곱해진다", lead="k단계 전�
             notes="RNN을 시간 방향으로 펼치면 아주 깊은 망이 된다. 50단계 전의 입력에 기울기가 도달하려면 시점마다 W_h와 tanh 도함수의 곱을 50번 거친다. "
                   "그 인자가 대략 0.9면 0.9^50 ≈ 0.005로 소실, 1.1이면 1.1^50 ≈ 117로 폭주. 3주차에 깊이 방향에서 본 문제가 시간 방향에서 다시 나타난 것. "
                   "Hochreiter(1991, 석사 논문)와 Bengio, Simard, Frasconi(1994)가 이 어려움을 분석했다. 원자료 주의: '정보가 오래되면 사라진다'는 비유로 끝내지 말고, 행렬 곱과 활성화 미분이 반복된다는 계산으로 이해한다.")
-L, R = s.cols(0.58)
+L, R = s.cols(0.55)
 s.image(A("week4/grad_decay.png"), L)
 s.bullets(["펼친 RNN = 시간 방향으로 **아주 깊은 망**", ("매 시점 곱해지는 인자 ≈ W_h × tanh′(…)", 1),
            "인자 0.9 → 50단계: **0.005** (소실)", "인자 1.1 → 50단계: **117** (폭주)",
@@ -188,7 +190,7 @@ s.table(["어려움", "무엇이 문제인가", "해결 방향의 예", "등장"
         [["① 학습 신호", "먼 위치까지 기울기가 작아지거나 커진다", "기억 경로 · 게이트 · gradient clipping", "**LSTM** (오늘)"],
          ["② 정보 표현", "고정 크기 상태 하나에 필요한 정보를 다 담아야 한다", "상태 설계 · 외부 기억 · **직접 참조**", "**Attention** (5주차)"],
          ["③ 계산 의존성", "h_t를 구하려면 h_(t−1)이 먼저 필요 — 순차 계산", "비순환 · 병렬화 가능한 구조", "**Transformer** (5·6주차)"]],
-        Box(s.area.x, s.area.y, s.area.w, 3.2), widths=[1.7, 4.0, 3.6, 2.2], size=16)
+        Box(s.area.x, s.area.y, s.area.w, 3.2), widths=[1.8, 4.2, 3.7, 2.4], size=15)
 s.callout("이 표가 앞으로 3주의 지도다: ① → LSTM, ② → Attention, ③ → Transformer",
           Box(s.area.x, s.area.y + 3.5, s.area.w, 0.8), kind="key", size=17)
 
@@ -211,7 +213,7 @@ s = d.slide("게이트는 입력으로 계산된다", lead="네 값 모두 같�
 top, bot = s.area.top(1.55, gap=0.3)
 s.formula(["f = σ([h, x] W_f + b_f)     i = σ([h, x] W_i + b_i)",
            "g = tanh([h, x] W_g + b_g)  o = σ([h, x] W_o + b_o)"], top, size=20)
-L, R = bot.cols(0.55, gap=0.4)
+L, R = bot.cols(0.5, gap=0.4)
 s.symbols([("f", "forget: 이전 기억 보존 비중 (0~1)"), ("i", "input: 새 후보를 쓰는 비중 (0~1)"),
            ("g", "새로 쓸 후보 값 (−1~1)"), ("o", "output: 밖으로 꺼내는 비중 (0~1)"), ("[h, x]", "이전 상태와 현재 입력을 이어 붙인 벡터")],
           L, size=15)
@@ -227,11 +229,11 @@ s.formula("c_t = f ⊙ c_(t−1) + i ⊙ g        h_t = o ⊙ tanh(c_t)", top, s
 L, R = bot.cols(0.6, gap=0.4)
 s.table(["", "f = 0.9 (보존)", "f = 0.5"], [["c_(t−1)", "2.0", "2.0"], ["i, g", "0.1, 0.5", "0.1, 0.5"],
                                           ["c_t = f ⊙ c_(t−1) + i ⊙ g", "1.8 + 0.05 = **1.85**", "1.0 + 0.05 = **1.05**"],
-                                          ["h_t = 0.5·tanh(c_t)", "**0.476**", "0.391"]], L, size=15, align="lcc", highlight=[2],
-        widths=[3.2, 1.8, 1.8])
+                                          ["h_t = 0.5·tanh(c_t)", "**0.476**", "0.391"]], L, size=14, align="lcc", highlight=[2],
+        widths=[2.8, 2.1, 2.1])
 s.bullets(["f ≈ 1이면 기억이 **거의 그대로**", "c_(t−1)이 조금 변하면 c_t도 **f배**만큼 변한다 (= 기울기가 f)",
            ("f ≈ 1 → 기울기도 오래 유지", 1),
-           "RNN은 매번 W_h와 tanh′를 곱했다", "c는 **곱하고 더할 뿐** → 긴 경로에 유리"], R)
+           "RNN은 매번 W_h와 tanh′를 곱했다", "c는 **곱하고 더할 뿐** → 긴 경로에 유리"], R, size=17)
 
 s = d.slide("LSTM이 해결한 것과 남은 것", lead="장기 의존성을 ‘학습하기 쉽게’ 만들었다 — 완벽한 기억도, 병렬 계산도 아니다", stage="검증",
             notes="LSTM은 ① 학습 신호 문제를 크게 줄였고 1997~2014년 음성 인식, 번역 등에서 표준이 되었다. "
@@ -281,7 +283,7 @@ s = d.slide("2003: 신경망 언어 모델", lead="단어 벡터와 다음 단�
                   "임베딩 표 E도 역전파로 함께 학습된다. 결과적으로 비슷한 문맥에 나오는 단어들이 비슷한 벡터(분산 표현)를 갖게 된다. "
                   "원자료 주의: '임베딩은 Word2Vec에서 처음 등장했다'는 틀린 말이다.")
 top, bot = s.area.top(1.9, gap=0.35)
-s.flow([{"head": "앞 단어들", "body": "“나는 학교에”"}, {"head": "임베딩 lookup", "body": "E에서 벡터 꺼내기 (학습됨)"},
+s.flow([{"head": "앞 단어들", "body": "“나는 학교에”"}, {"head": "임베딩 lookup", "body": "E에서 벡터 꺼내기\n(학습됨)"},
         {"head": "MLP", "body": "은닉층 (2주차)"}, {"head": "Softmax", "body": "다음 단어 확률 |V|개", "tone": "dark"}],
        top, body_size=15, head_size=17)
 s.bullets(["Bengio et al. (2003) ‘A Neural Probabilistic Language Model’", "임베딩 E도 **역전파로 함께** 학습된다",
@@ -349,8 +351,8 @@ s.cards([{"head": "Sutskever, Vinyals & Le (2014)", "bullets": True,
          {"head": "Cho et al. (2014)", "bullets": True,
           "body": ["RNN Encoder-Decoder", "**GRU** 제안 (게이트 2개)", "긴 문장에서 성능 저하 관찰"]},
          {"head": "같은 해의 세 번째 논문 (→ 5주차)", "tone": "accent", "bullets": True,
-          "body": ["Bahdanau et al. (2014) Attention", "거의 **같은 시기**에 공개", "수업 순서 ≠ 긴 시간 간격"]}], bot, cols=3,
-        body_size=16, head_size=17)
+          "body": ["Bahdanau et al. (2014) Attention", "거의 **같은 시기**에 공개", "수업 순서 ≠ 긴 시간 간격"]}], Box(bot.x, bot.y, bot.w, s.area.b - 1.3 - bot.y), cols=3,
+        body_size=15, head_size=16, fit_h=False)
 s.callout("학습: 정답 번역의 각 토큰에 대한 −log 확률의 합 (cross-entropy). 학습 때 Decoder 입력에는 모델 예측 대신 "
           "**정답의 이전 토큰**을 넣는다 (teacher forcing, 6주차)", Box(s.area.x, s.area.b - 1.0, s.area.w, 0.85), kind="tip", size=16)
 
@@ -400,7 +402,7 @@ d.references([["[06] Elman (1990). Finding Structure in Time. Cognitive Science"
 
 d.handoff(["토큰 → 임베딩으로 문장을 숫자로", "RNN · LSTM으로 **순서와 기억**을", "Seq2Seq로 **길이가 다른** 입출력을"],
           ["모든 입력을 **고정 벡터 c 하나**로 압축 (병목)", "h_t는 h_(t−1)이 필요 — **순차 계산**"],
-          ["**필요할 때 원문을**", "**다시 찾아보면?**", "Attention (2014) → Self-attention"],
+          ["**필요할 때 원문을**", "**다시 찾아보면?**", "Attention (2014)\n→ Self-attention"],
           notes="다음 주: Encoder의 위치별 표현을 남겨 두고, 출력할 때마다 다른 비중으로 다시 참조하는 Attention. 그리고 그것을 모델의 본체로 삼은 Transformer의 핵심 연산.")
 
 d.save(OUT)

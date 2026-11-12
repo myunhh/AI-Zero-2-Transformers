@@ -14,11 +14,14 @@ if os.path.exists(_b):
     _fm.fontManager.addfont(_b)
 # 수식 기호(ŷ, −, ᵀ, 아래첨자)는 DejaVu, 한글은 NanumGothic으로 대체
 plt.rcParams["font.family"] = ["DejaVu Sans", "NanumGothic"]
+from matplotlib.colors import LinearSegmentedColormap  # noqa: E402
 from matplotlib.patches import Circle, FancyArrowPatch, FancyBboxPatch  # noqa: E402
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "week2")
 os.makedirs(OUT, exist_ok=True)
 TEAL, TEAL2, ACC, GRAY, DARK, MINT, LINE = (P[k] for k in ("TEAL", "TEAL2", "ACCENT", "GRAY", "DARK", "MINT", "LINE"))
+# 결정 경계 확률 지도: 흰색 → 옅은 파랑 (테마 팔레트, 점·경계선이 묻히지 않게 옅게)
+BLUES = LinearSegmentedColormap.from_list("theme_blues", ["#FFFFFF", MINT, P.get("MINT2", MINT), P.get("MID", TEAL2)])
 PTS = np.array([[0, 0], [1, 0], [0, 1], [1, 1]], float)
 plt.rcParams["font.size"] = 13
 
@@ -147,7 +150,8 @@ def fig_and_or_xor():
                 ax.plot(g, (-a * g - bb) / c, color=GRAY, ls=ls, lw=1.8)
             ax.text(0.5, 0.5, "?", fontsize=40, color=ACC, ha="center", va="center", fontweight="bold")
         scatter_labels(ax, y)
-        style(ax, title=nm + (" — 직선 한 개로 분리 가능" if wb else " — 어떤 직선도 실패"))
+        # 세 패널 제목이 서로 닿지 않도록 두 줄로
+        style(ax, title=nm + ("\n직선 한 개로 분리 가능" if wb else "\n어떤 직선도 실패"))
         ax.title.set_fontsize(13)
         if not wb:
             ax.title.set_color(ACC)
@@ -175,7 +179,7 @@ def fig_xor_experiment():
         p = int(a + b - 0.5 >= 0)
         ax.text(a + 0.09, b + 0.1, f"예측 {p}", fontsize=12, color=ACC if p != t else DARK,
                 fontweight="bold" if p != t else "normal")
-    style(ax, title="선형: w₁=1, w₂=1, b=−0.5 → 3/4 정답")
+    style(ax, title="선형: w₁=1, w₂=1, b=−0.5\n→ 3/4 정답")
     ax = axs[1]
     g = np.linspace(-0.4, 1.4, 400)
     X, Y = np.meshgrid(g, g)
@@ -185,7 +189,7 @@ def fig_xor_experiment():
     scatter_labels(ax, y)
     for (a, b), t in zip(PTS, y):
         ax.text(a + 0.09, b + 0.1, f"f={f_xor(a, b):g}", fontsize=12, color=DARK)
-    style(ax, title="비선형: ReLU(s) − 2·ReLU(s−1), s = x₁+x₂ → 4/4")
+    style(ax, title="비선형: ReLU(s) − 2·ReLU(s−1)\ns = x₁+x₂ → 4/4")
     for a in axs:
         a.title.set_fontsize(13.5)
     fig.tight_layout()
@@ -212,7 +216,7 @@ def fig_hidden():
         if lb:
             ax.text(h1 - 0.05, h2 - 0.28 if lb.startswith("(1,0)") else h2 + 0.12, lb, fontsize=12, color=DARK,
                     ha="center" if lb.startswith("(1,0)") else "left")
-    ax.text(1.55, 0.35, "h₁ − 2h₂ = 0.5", color=TEAL, fontsize=13, fontweight="bold", rotation=16)
+    ax.text(0.8, 0.45, "h₁ − 2h₂ = 0.5", color=TEAL, fontsize=13, fontweight="bold", rotation=16)
     ax.set_xlim(-0.3, 2.3); ax.set_ylim(-0.3, 1.5); ax.set_aspect("equal")
     ax.set_xticks([0, 1, 2]); ax.set_yticks([0, 1])
     ax.set_xlabel("h₁ = ReLU(x₁+x₂)"); ax.set_ylabel("h₂ = ReLU(x₁+x₂−1)")
@@ -255,7 +259,7 @@ def fig_trained():
     g = np.linspace(-0.4, 1.4, 300)
     X, Y = np.meshgrid(g, g)
     Pp = predict(params, np.c_[X.ravel(), Y.ravel()]).reshape(X.shape)
-    cf = ax.contourf(X, Y, Pp, levels=np.linspace(0, 1, 11), cmap="GnBu", alpha=0.55, zorder=0)
+    cf = ax.contourf(X, Y, Pp, levels=np.linspace(0, 1, 11), cmap=BLUES, alpha=0.9, zorder=0)
     ax.contour(X, Y, Pp, levels=[0.5], colors=[TEAL], linewidths=2.5)
     scatter_labels(ax, [0, 1, 1, 0])
     pp = predict(params, PTS).ravel()
@@ -264,7 +268,7 @@ def fig_trained():
     style(ax, title="학습된 2-4-1 MLP의 결정 경계")
     cb = fig.colorbar(cf, ax=ax, fraction=0.046, pad=0.04); cb.set_label("p(y=1)")
     ax = axs[1]
-    ax.plot(losses, color=ACC, lw=2.5)
+    ax.plot(losses, color=TEAL, lw=2.5)  # 주황은 문제·경고에만 — 손실 곡선은 강조 파랑
     ax.set_xlabel("step"); ax.set_ylabel("BCE loss")
     ax.set_title("손실 곡선 (경사하강법, lr=0.5)", color=DARK, fontsize=15, fontweight="bold")
     for sp in ("top", "right"):
@@ -293,7 +297,7 @@ def fig_graph():
     for nm, x, fv, lab in nodes:
         ax.add_patch(FancyBboxPatch((x - 0.95, 2.05), 1.9, 1.2, boxstyle="round,pad=0.05", fc=MINT, ec=TEAL, lw=2))
         ax.text(x, 2.88, nm, ha="center", va="center", fontsize=23, color=TEAL, fontweight="bold")
-        ax.text(x, 2.38, fv, ha="center", va="center", fontsize=16, color=DARK)
+        ax.text(x, 2.38, fv, ha="center", va="center", fontsize=14.5, color=DARK)
         ax.text(x, 3.55, lab, ha="center", fontsize=15, color=GRAY)
         if nm in grads:
             ax.text(x, 1.35, f"∂L/∂{nm} = {grads[nm]}", ha="center", fontsize=16, color=ACC, fontweight="bold")

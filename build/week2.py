@@ -4,19 +4,21 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+import deckkit  # noqa: E402
+deckkit.use_theme("clean")  # Apple 디자인 원칙 테마 — import * 보다 먼저
 from deckkit import *  # noqa
 
 A = lambda p: os.path.join(HERE, "assets", p)
 OUT = os.path.join(HERE, "..", "lectures", "week02_perceptron_to_mlp.pptx")
 
-d = Deck(2, "Perceptron에서 MLP로", date="2026-10-12")
+d = Deck(2, "Perceptron에서 MLP로", date="2026-10-12", theme="clean")
 
 # ============================================================ 도입
 d.question("직선으로 안 되는 문제는?", "1958–1986 · Perceptron · XOR · MLP · 역전파 · Softmax",
            notes="지난주의 선형 모델에 '예/아니오'를 붙인 Perceptron에서 출발한다. 그런데 직선 하나로는 절대 나눌 수 없는 문제가 있다. "
                  "그 벽을 넘는 두 가지 열쇠 — 비선형 은닉층과 역전파 — 가 오늘의 주제다.")
 
-d.bridge(["텐서와 shape", "모델 ŷ = wx + b, 손실(MSE)", "경사하강법으로 **규칙 y = 2x + 1**을 스스로 찾음"],
+d.bridge(["텐서와 shape", "모델 ŷ = wx + b, 손실(MSE)", "경사하강법으로 **규칙 y = 2x + 1**을 스스로 찾음"],
          ["출력이 **예/아니오**(분류)라면?", "가중합 + 임계값 뉴런 **하나**로 모든 규칙을 배울 수 있을까?"],
          ["**직선으로 안 되는 문제는?**", "그 문제를 풀려면 무엇을 바꿔야 하나?"],
          notes="지난주 복습 3줄: 텐서, 손실, 경사하강법. 이번 주는 출력을 0/1로 바꾸는 순간 생기는 일에서 출발한다.")
@@ -147,7 +149,7 @@ s = d.slide("실험: 직선의 최선은 3/4", lead="선형 경계는 기껏해�
 L, R = s.cols(0.62)
 s.image(A("week2/xor_experiment.png"), L)
 s.bullets(["왼쪽: 직선 w = (1, 1), b = −0.5", ("(1, 1)을 틀림 → **3/4**", 1),
-           "오른쪽: 비선형 함수 ReLU(s) − 2·ReLU(s − 1)", ("s = x1 + x2", 1),
+           "오른쪽: 비선형 함수 ReLU(s) − 2·ReLU(s − 1)", ("s = x1 + x2", 1),
            ("ReLU(z) = max(0, z): 음수를 0으로 (Part 3에서 자세히)", 1), ("네 점 모두 → **4/4**", 1),
            "이 함수는 어디서 왔나? → Part 3"], R, size=16)
 
@@ -215,7 +217,7 @@ s.image(A("week2/hidden_space.png"), L)
 s.table(["입력", "h1", "h2", "XOR"],
         [["(0, 0)", "0", "0", "0"], ["(0, 1)", "1", "0", "1"], ["(1, 0)", "1", "0", "1"], ["(1, 1)", "2", "1", "0"]],
         Box(R.x, R.y, R.w, 2.2), size=13, align="cccc")
-s.bullets(["ReLU(z) = max(0, z) (앞 장)", "h1 = ReLU(x1 + x2),  h2 = ReLU(x1 + x2 − 1)",
+s.bullets(["ReLU(z) = max(0, z) (앞 장)", "h1 = ReLU(x1 + x2),  h2 = ReLU(x1 + x2 − 1)",
            "새 좌표에서는 **직선 하나**로 분리", ("h1 − 2·h2 = 0.5", 1),
            "(0,1)과 (1,0)이 **같은 점**으로 모인다"], Box(R.x, R.y + 2.4, R.w, R.h - 2.4), size=15)
 
@@ -231,7 +233,7 @@ s.table(["(x1, x2)", "s", "ReLU(s)", "ReLU(s−1)", "f", "XOR"],
         [["(0, 0)", "0", "0", "0", "0", "0"], ["(0, 1)", "1", "1", "0", "1", "1"], ["(1, 0)", "1", "1", "0", "1", "1"],
          ["(1, 1)", "2", "2", "1", "2 − 2 = **0**", "0"]], Box(L.x, L.y, L.w, 2.6), size=16, align="cccccc",
         widths=[1.3, 0.6, 1.2, 1.4, 1.4, 0.8])
-s.bullets(["= 좌표 바꾸기 장의 h1, h2 그대로 — 출력 = h1 − 2·h2", "은닉 유닛 2개 + 출력 가중치 (1, −2)",
+s.bullets(["= 좌표 바꾸기 장의 h1, h2 그대로 — 출력 = h1 − 2·h2", "은닉 유닛 2개 + 출력 가중치 (1, −2)",
            "= **MLP** (Multi-Layer Perceptron)",
            "==주의== 존재한다 ≠ 학습으로 찾는다", ("‘표현 가능’과 ‘학습 가능’은 다른 질문", 1)], R, size=16)
 s.callout("같은 해를 행렬로 쓰면 (다음 장의 shape 그대로): h = ReLU(x W1 + b1), ŷ = h W2  —  "
@@ -242,7 +244,7 @@ s = d.slide("MLP의 구조와 shape", lead="선형 → 비선형 → 선형. 배
             notes="h = ReLU(x W1 + b1), ŷ = h W2 + b2. 입력 2개, 은닉 m개, 출력 1개면 W1: (2, m), b1: (m,), W2: (m, 1), b2: (1,). "
                   "손으로 만든 XOR 해는 m = 2인 경우. 파라미터 수 = 2m + m + m + 1 = 4m + 1. 배치 B개 입력 (B, 2) → 은닉 (B, m) → 출력 (B, 1). "
                   "Transformer의 FFN(6주차)도 정확히 이 구조를 각 토큰에 적용한다: d → d_ff → d (입력 크기 → 더 큰 은닉 → 입력 크기).")
-top, bot = s.area.top(1.9, gap=0.3)
+top, bot = s.area.top(1.4, gap=0.3)   # 흐름 상자는 두 줄뿐 — 높이를 줄여 빈 공간을 없앤다
 s.flow([{"head": "입력 x", "body": "(B, 2)"}, {"head": "Linear W1, b1", "body": "(B, 2) → (B, m)"},
         {"head": "ReLU", "body": "(B, m) 비선형", "tone": "accent"}, {"head": "Linear W2, b2", "body": "(B, m) → (B, 1)"},
         {"head": "출력 ŷ", "body": "(B, 1)", "tone": "dark"}], top, body_size=15, head_size=16, gap=0.35)
@@ -323,7 +325,7 @@ L, R = s.cols(0.5, gap=0.4)
 s.table(["", "이동 전", "이동 후 (η = 0.1)"], [["W1", "[[1, −1], [0.5, 0.5]]", "[[0.8, −1], [0.3, 0.5]]"],
                                             ["W2", "[[2], [1]]", "[[1.85], [1]]"], ["ŷ", "3", "**2.035**"],
                                             ["손실 L", "0.5", "**0.0006**"]], Box(L.x, L.y, L.w, 2.8), size=15, align="lcc",
-        highlight=[2, 3])
+        widths=[0.8, 2.4, 2.6], highlight=[2, 3])
 s.bullets(["정답 y = 2에 **거의 도착**", "두 번째 은닉 유닛(ReLU = 0)은 이번엔 변화 없음",
            "역전파는 기울기 **계산**, 갱신은 **optimizer** — 1주차 구분 그대로", "이 과정을 수천 번 반복 = 학습"], R)
 s.callout("forward → backward → update를 **수천 번 반복**하면 — 다음 장: 실제로 XOR을 학습시켜 본다",
@@ -337,9 +339,9 @@ L, R = s.cols(0.62)
 s.image(A("week2/mlp_trained.png"), L)
 s.table(["은닉 유닛 수", "성공 (20회 중)"], [["2", "4"], ["4", "15"], ["8", "19"]], Box(R.x, R.y, R.w, 1.7),
         size=15, align="cc")
-s.bullets(["2-4-1 = 입력 2 · 은닉 4 · 출력 1", "손실: 이진 cross-entropy, 경사하강법 lr 0.5, 3000 step",
+s.bullets(["2-4-1 = 입력 2 · 은닉 4 · 출력 1", "손실: 이진 cross-entropy, 경사하강법 lr 0.5, 3000 step",
            "은닉 2개로도 해는 **존재**하지만 자주 못 찾는다",
-           "원인 예: ReLU가 0에 갇힌 유닛 → 기울기 0"], Box(R.x, R.y + 1.9, R.w, R.h - 1.9), size=15)
+           "원인 예: ReLU가 0에 갇힌 유닛 → 기울기 0"], Box(R.x, R.y + 1.9, R.w, R.h - 1.9), size=14)
 
 s = d.slide("모델 부족인가, 학습 실패인가", lead="성능이 낮을 때 두 원인을 분리해서 점검한다", stage="검증",
             notes="원자료의 질문: XOR에서 성능이 낮으면 모델이 부족한 건가, 학습이 안 된 건가? "
@@ -353,7 +355,7 @@ s.table(["", "모델이 부족 (표현력 한계)", "학습이 실패 (최적화
          ["처방", "구조를 바꾼다 (층, 비선형성)", "구현 · 초기화 · 학습률 · 반복 수 · 크기 점검"]],
         Box(s.area.x, s.area.y, s.area.w, 3.1), widths=[1.4, 4.2, 4.2], size=18)
 s.callout("학습이 안 될 때 점검 순서: 구현 → 초기화 → 학습률 → 반복 수 → 모델 크기   (6주차 Transformer 실험에서도 같은 순서)",
-          Box(s.area.x, s.area.y + 3.3, s.area.w, 1.1), kind="key", size=16)
+          Box(s.area.x, s.area.y + 3.3, s.area.w, 1.1), kind="key", size=15)
 
 s = d.slide("역전파의 계보", lead="1986년은 ‘발명’이 아니라 은닉 표현 학습을 보여주며 ‘확산’된 해", stage="역사",
             notes="역방향 자동 미분의 아이디어는 1970년 Linnainmaa의 석사 논문에서 나타났고, 1974년 Werbos가 박사 논문에서 신경망 학습에 적용할 수 있음을 제시했다. "
@@ -388,7 +390,7 @@ s.bullets(["`requires_grad=True`: 기울기를 추적", "forward 중 **계산 �
            "갱신은 따로: `opt.step()`"], Box(R.x, R.y, R.w, 2.3), size=17)
 s.table(["손 계산", "코드"], [["forward 표 (z, h, ŷ, L)", "h = relu(x @ W1) … L = …"], ["backward 표 전체", "L.backward()"],
                             ["∂L/∂W1, ∂L/∂W2", "W1.grad, W2.grad"], ["갱신 W ← W − η·∇W", "opt.step()"]],
-        Box(R.x, R.y + 2.45, R.w, R.h - 2.45), widths=[1.1, 1.0], size=14)
+        Box(R.x, R.y + 2.45, R.w, R.h - 2.45), widths=[1.05, 1.15], size=13)
 
 # ============================================================ Part 5
 d.part(5, "확률로 답하기: Softmax와 Cross-entropy", "‘예/아니오’ 대신 ‘얼마나 확신하는가’, 여러 선택지 중 하나를 고르려면?")
@@ -408,7 +410,7 @@ s.table(["z (점수)", "σ(z)", "읽는 법"], [["−2", "0.12", "1일 가능성
 s.bullets(["**출력층**에 쓰는 함수: 마지막 점수 z → ‘1일 확률’", ("은닉층의 ReLU(직선 구부리기)와 자리가 다르다", 1),
            "계단 함수와 달리 **미분 가능** → 역전파 OK", "선택지가 **여러 개**라면? → Softmax"], Box(R.x, R.y, R.w, 2.6))
 s.callout("Perceptron의 판정 ŷ = 1[z ≥ 0] 은 σ(z) ≥ 0.5 와 같은 경계다 — 결정 경계는 그대로 두고, "
-          "‘얼마나 확신하는가’(0.12 / 0.50 / 0.88)만 더해졌다.", Box(bot.x, bot.y + 2.75, bot.w, 1.0), kind="key", size=16)
+          "‘얼마나 확신하는가’ (0.12 / 0.50 / 0.88)만 더해졌다.", Box(bot.x, bot.y + 2.75, bot.w, 1.0), kind="key", size=15)
 
 s = d.slide("Softmax: 점수들을 비중으로", lead="모든 점수를 exp로 양수로 만든 뒤, 합이 1이 되게 나눈다", stage="계산",
             notes="클래스가 K개면 모델은 점수(logit) K개를 낸다. softmax는 각 점수를 exp로 양수로 바꾸고 전체 합으로 나눠 합이 1인 비중을 만든다. "
@@ -419,7 +421,7 @@ s.formula("p_i = exp(z_i) / Σ_j exp(z_j)", top, size=26)
 L, R = bot.cols(0.52, gap=0.4)
 s.table(["", "고양이", "개", "새"], [["점수 z", "2", "1", "0"], ["exp(z)", "7.39", "2.72", "1.00"],
                                   ["p = exp / 11.11", "**0.665**", "0.245", "0.090"]], Box(L.x, L.y, L.w, 2.0),
-        size=16, align="lccc")
+        size=16, align="lccc", widths=[1.7, 1, 1, 1])
 s.bullets(["합 = 1, 모두 양수", "순서는 점수 순서 그대로", "가장 큰 점수가 가장 큰 비중 — 나머지도 0은 아니다"],
           Box(L.x, L.y + 2.3, L.w, L.h - 2.3), size=16)
 s.callout("5주차 연결: Attention도 ‘비교 점수 → softmax → 비중’으로 어떤 토큰을 얼마나 참고할지 정한다.", R, kind="tip", size=17)
@@ -431,7 +433,7 @@ s = d.slide("Temperature: 분포의 뾰족함", lead="softmax(z / τ): 순서는
 L, R = s.cols(0.6)
 s.image(A("week1/softmax_temp.png"), L)
 s.bullets(["τ = 0.5 → [0.867, 0.117, 0.016]", "τ = 1 → [0.665, 0.245, 0.090]", "τ = 2 → [0.506, 0.307, 0.186]",
-           "**순서는 바뀌지 않는다**", "쓰임: 생성할 때 무작위성 조절 (6주차)"], R)
+           "**순서는 바뀌지 않는다**", "쓰임: 생성할 때 무작위성 조절 (6주차)"], R, size=17)
 
 s = d.slide("Cross-entropy: 분류의 손실", lead="정답 클래스에 준 확률의 −log — 확신하고 틀릴수록 벌점이 급격히 커진다", stage="계산",
             notes="정답이 one-hot일 때 cross-entropy는 −log p(정답). 정답에 0.9를 주면 0.105, 0.5면 0.693, 0.1이면 2.303, 0.01이면 4.61. "
@@ -454,7 +456,7 @@ s.formula("∂L/∂z = p − y", top, size=28)
 L, R = bot.cols(0.5, gap=0.4)
 s.table(["", "고양이 (정답)", "개", "새"], [["p", "0.665", "0.245", "0.090"], ["y (one-hot)", "1", "0", "0"],
                                         ["p − y", "**−0.335**", "0.245", "0.090"]], Box(L.x, L.y, L.w, 1.9), size=17,
-        align="lccc")
+        align="lccc", widths=[1.3, 1.5, 1, 1])
 s.bullets(["정답 점수는 **올리고**(−0.335), 오답 점수는 **내린다**(+0.245, +0.090)",
            "틀린 만큼(p − y) **그대로** 미는 힘 — 확신하고 틀릴수록 크다"], Box(L.x, L.y + 2.1, L.w, L.h - 2.1), size=16)
 rest = s.card(R, "실전 주의 (PyTorch)", ["`nn.CrossEntropyLoss`는 softmax를 **내부에서** 한다",
@@ -469,11 +471,11 @@ s = d.slide("Transformer와의 연결", lead="오늘 배운 부품들이 6주 �
                   "softmax + cross-entropy → 다음 토큰 예측: 어휘 |V|개 중 하나를 고르는 분류 문제. "
                   "역전파 → 수십억 개 파라미터를 가진 Transformer도 같은 방법으로 기울기를 구한다. "
                   "원자료: Q/K/V 투영도 학습 가능한 선형층이지만, 다른 토큰의 정보를 결합하는 것은 Attention 가중합이다(5주차).")
-rest = s.cards([{"head": "MLP", "body": ["→ Transformer의 **FFN**", "토큰마다 d → d_ff → d"]},
+rest = s.cards([{"head": "MLP", "body": ["→ Transformer의 **FFN**", "토큰마다 d → d_ff → d"]},
                 {"head": "ReLU", "body": ["→ FFN의 활성화", "후속 모델은 GELU 등"]},
                 {"head": "Softmax + CE", "body": ["→ **다음 토큰 예측**", "어휘 |V|개 중 하나 고르기"]},
                 {"head": "역전파", "body": ["→ 수십억 파라미터도", "같은 방법으로 학습"], "tone": "accent"}],
-               cols=4, body_size=16, head_size=19)
+               cols=4, body_size=15, head_size=19)
 s.textbox("Transformer 블록 하나를 오늘의 부품으로 읽으면:", Box(rest.x, rest.y, rest.w, 0.4), size=16, bold=True,
           color=TEAL, gap=0)
 s.flow([{"head": "토큰 벡터 x", "body": "(B, T, d)"}, {"head": "Attention", "body": "다른 토큰과 섞기 (5주차)", "tone": "plain"},
@@ -482,7 +484,7 @@ s.flow([{"head": "토큰 벡터 x", "body": "(B, T, d)"}, {"head": "Attention", 
        Box(rest.x, rest.y + 0.45, rest.w, 1.3), body_size=14, head_size=16, gap=0.4)
 s.callout("Q/K/V 투영도 학습되는 선형층이다. 하지만 **다른 토큰의 정보를 섞는 것**은 MLP가 아니라 "
           "Attention의 가중합이다 (5주차) — MLP는 토큰 하나 안에서만 계산한다.",
-          Box(rest.x, rest.y + 2.0, rest.w, 1.2), kind="tip", size=16)
+          Box(rest.x, rest.y + 2.0, rest.w, 1.2), kind="tip", size=15)
 
 # ============================================================ 마무리
 d.summary(["**Perceptron** = 가중합 + 계단 함수, 결정 경계는 **직선** (1958)",

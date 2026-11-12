@@ -13,8 +13,8 @@ from matplotlib.patches import FancyArrowPatch, FancyBboxPatch  # noqa: E402
 
 TEAL, TEAL2, MINT, DARK, GRAY, ACC, LINE = (P[k] for k in
                                             ("TEAL", "TEAL2", "MINT", "DARK", "GRAY", "ACCENT", "LINE"))
-ACC_BG = "#FDF1E8"
-MINT2 = "#CFE8EE"
+ACC_BG = P.get("ACC_BG", "#FFF3EA")
+MINT2 = P.get("MINT2", "#D6E6FA")
 
 
 def out(name):
@@ -66,20 +66,20 @@ def onehot_lookup():
         ax.text(ex - 0.35, yy + ch / 2, f"{i} {words[i]}", ha="right", va="center", fontsize=14,
                 color=ACC if hl else GRAY, fontweight="bold" if hl else "normal")
         for j in range(3):
-            rbox(ax, ex + j * cw * 1.25, yy, cw * 1.18, ch * 0.95, fc=ACC_BG if hl else MINT,
-                 ec=ACC if hl else MINT2, lw=2 if hl else 1, text=f"{E[i, j]:+.1f}", fs=15,
+            rbox(ax, ex + j * cw * 1.32, yy, cw * 1.18, ch * 0.95, fc=ACC_BG if hl else MINT,
+                 ec=ACC if hl else MINT, lw=2 if hl else 1, text=f"{E[i, j]:+.1f}", fs=14,
                  tc=DARK, bold=hl, r=0.05)
-    ax.text(ex + 1.85, ey + 5 * ch * 1.08 + 0.25, "E  shape (|V|=5, d=3)\n설명용 작은 어휘", ha="center",
+    ax.text(ex + 1.91, ey + 5 * ch * 1.08 + 0.25, "E  shape (|V|=5, d=3)\n설명용 작은 어휘", ha="center",
             va="bottom", fontsize=14.5, color=DARK, linespacing=1.3)
-    ax.text(12.9, y0 + ch / 2, "=", ha="center", va="center", fontsize=30, color=TEAL, fontweight="bold")
+    ax.text(13.0, y0 + ch / 2, "=", ha="center", va="center", fontsize=30, color=TEAL, fontweight="bold")
     # result
     rx = 13.9
     for j in range(3):
-        rbox(ax, rx + j * cw * 1.25, y0, cw * 1.18, ch, fc=ACC, text=f"{E[3, j]:+.1f}", fs=16,
+        rbox(ax, rx + j * cw * 1.32, y0, cw * 1.18, ch, fc=ACC, text=f"{E[3, j]:+.1f}", fs=15,
              tc="white", bold=True, r=0.05)
-    ax.text(rx + 1.85, y0 + ch + 0.35, "x = E[3]\nshape (1, d=3)", ha="center", va="bottom",
+    ax.text(rx + 1.91, y0 + ch + 0.35, "x = E[3]\nshape (1, d=3)", ha="center", va="bottom",
             fontsize=14.5, color=DARK)
-    ax.text(rx + 1.85, y0 - 0.5, "곱셈 대신 3번 행을\n바로 꺼내면(lookup) 같다", ha="center", va="top",
+    ax.text(rx + 1.91, y0 - 0.5, "곱셈 대신 3번 행을\n바로 꺼내면(lookup) 같다", ha="center", va="top",
             fontsize=14, color=ACC, fontweight="bold", linespacing=1.3)
     fig.savefig(out("onehot_lookup.png"), facecolor="white")
     plt.close(fig)
@@ -103,8 +103,8 @@ def analogy():
     a("woman", "queen", GRAY, "--")
     a("서울", "한국", TEAL2)
     a("파리", "프랑스", TEAL2)
-    ax.text(0.3, 1.9, "성별 방향", color=ACC, fontsize=15, rotation=62, fontweight="bold")
-    ax.text(6.3, 1.25, "수도→국가", color=TEAL2, fontsize=15, rotation=42, fontweight="bold")
+    ax.text(0.05, 1.15, "성별 방향", color=ACC, fontsize=15, rotation=72, fontweight="bold")
+    ax.text(5.75, 0.85, "수도→국가", color=TEAL2, fontsize=15, rotation=50, fontweight="bold")
     ax.set_xlim(0, 9.8)
     ax.set_ylim(0, 4.9)
     ax.set_xticks([])
@@ -128,7 +128,7 @@ def rnn_unrolled():
     xs = [2.2, 7.2, 12.2, 17.2]
     ax.text(11.0, 8.6, r"모든 셀이 같은 규칙:  $h_t = \tanh(x_t W_x + h_{t-1} W_h + b)$   (같은 $W_x, W_h, b$ 재사용)",
             ha="center", va="center", fontsize=13, color=TEAL)
-    rbox(ax, 0.1, 3.5, 1.2, 1.2, fc="white", ec=LINE, text="$h_0$\n= 0", fs=12, tc=GRAY)
+    rbox(ax, 0.0, 3.5, 1.15, 1.2, fc="white", ec=LINE, text="$h_0$\n= 0", fs=12, tc=GRAY)
     for k, (x, t) in enumerate(zip(xs, toks)):
         last = k == 3
         lab = "$h_t$" if last else f"$h_{k + 1}$"
@@ -143,7 +143,7 @@ def rnn_unrolled():
         if k:
             lab_prev = "$h_{t-1}$" if last else f"$h_{k}$"
             ax.text((px + x) / 2, 4.35, lab_prev, ha="center", va="bottom", fontsize=13, color=ACC)
-    ax.text(20.0, 4.1, "시간 →", fontsize=13, color=GRAY, va="center")
+    ax.text(20.15, 4.1, "시간 →", fontsize=13, color=GRAY, va="center")
     fig.savefig(out("rnn_unrolled.png"), facecolor="white")
     plt.close(fig)
 
@@ -183,7 +183,7 @@ def lstm_cell():
     ax.set_xlim(0, 21)
     ax.set_ylim(0.9, 11.4)
     ax.axis("off")
-    rbox(ax, 2.2, 1.2, 16.2, 9.6, fc="#F7FBFC", ec=LINE, lw=1.5, r=0.3)
+    rbox(ax, 2.2, 1.2, 16.2, 9.6, fc=P.get("BG", "#F5F5F7"), lw=0, r=0.3)
     # cell state highway
     yc = 9.2
     arr(ax, 0.2, yc, 20.6, yc, c=ACC, lw=4, ms=22)

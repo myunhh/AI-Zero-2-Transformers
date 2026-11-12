@@ -226,8 +226,9 @@ def _no_bullet(p):
     pPr.append(pPr.makeelement(qn("a:buNone"), {}))
 
 
-def fill(tf, items, size=16, color=INK, bold=False, align="l", bullets=False, anchor="t",
-         spacing=1.1, gap=0.45, margin=0.08, sub_ratio=0.85, set_face=True, bullet_color=TEAL):
+def fill(tf, items, size=16, color=None, bold=False, align="l", bullets=False, anchor="t",
+         spacing=1.1, gap=0.45, margin=0.08, sub_ratio=0.85, set_face=True, bullet_color=None):
+    color = color or INK
     tf.word_wrap = True
     tf.margin_left = tf.margin_right = Inches(margin)
     tf.margin_top = tf.margin_bottom = Inches(0.04)
@@ -341,7 +342,8 @@ class S:
         return self.area.rows(*ratios, gap=gap)
 
     # -- template body placeholder bullets
-    def bullets(self, items, box=None, size=18, min_size=12, gap=0.5, anchor="t", color=INK):
+    def bullets(self, items, box=None, size=18, min_size=12, gap=0.5, anchor="t", color=None):
+        color = color or INK
         box = box or self.area
         if self._used_body or self.body_ph is None:
             return self.textbox(items, box, size=size, min_size=min_size, bullets=True, gap=gap,
@@ -359,8 +361,9 @@ class S:
         return ph
 
     # -- free text
-    def textbox(self, items, box, size=16, min_size=10, color=INK, bold=False, align="l",
+    def textbox(self, items, box, size=16, min_size=10, color=None, bold=False, align="l",
                 bullets=False, anchor="t", gap=0.4, spacing=1.1, margin=0.08, autofit=True):
+        color = color or INK
         if autofit:
             size = fit(items, box.w - 2 * margin - (0.3 if bullets else 0), box.h - 0.08, size,
                        min_size, gap=gap, spacing=spacing + 0.1)
@@ -395,8 +398,9 @@ class S:
         spPr.append(spPr.makeelement(qn("a:effectLst"), {}))
         return shp
 
-    def label(self, shp, items, size=14, color=INK, bold=False, align="c", anchor="m", min_size=9,
+    def label(self, shp, items, size=14, color=None, bold=False, align="c", anchor="m", min_size=9,
               margin=0.1, gap=0.2):
+        color = color or INK
         w = shp.width / 914400 - 2 * margin
         h = shp.height / 914400 - 0.08
         size = fit(items, w, h, size, min_size, gap=gap, spacing=1.2)
@@ -413,7 +417,8 @@ class S:
         ln.append(ln.makeelement(qn("a:tailEnd"), {"type": "triangle", "w": "med", "len": "med"}))
         return c
 
-    def badge(self, x, y, d, text, fill_color=TEAL, color=WHITE, size=13):
+    def badge(self, x, y, d, text, fill_color=None, color=WHITE, size=13):
+        fill_color = fill_color or TEAL
         c = self.rect(Box(x, y, d, d), fill_color=fill_color, shape=MSO_SHAPE.OVAL)
         self.label(c, str(text), size=size, color=color, bold=True, margin=0.0)
         return c
@@ -749,7 +754,8 @@ def _tones(flow=False):
             "plain": (WHITE, TEAL, LINE), "dark": (TEAL, WHITE, None)}
 
 
-def _cell_border(cell, color=LINE):
+def _cell_border(cell, color=None):
+    color = color or LINE
     tcPr = cell._tc.get_or_add_tcPr()
     fills = tcPr.findall(qn("a:solidFill"))
     for f in fills:
@@ -999,7 +1005,7 @@ class Deck:
                     color=TEAL, anchor="m", gap=0)
         items = [f"**Part {i+1}** {t}" for i, t in enumerate(parts)]
         ctx.textbox(items, Box(L.x + 0.2, L.y + 0.55, L.w - 0.4, L.h - 0.65), size=15, min_size=10, gap=0.3)
-        ctx.rect(R, fill_color=WHITE, line=LINE)
+        ctx.rect(R, fill_color=TINT if STYLE == "apple" else WHITE, line=None if STYLE == "apple" else LINE)
         ctx.textbox("끝나면 할 수 있는 것", Box(R.x + 0.2, R.y + 0.1, R.w - 0.4, 0.4), size=16, bold=True,
                     color=TEAL, anchor="m", gap=0)
         ctx.textbox(goals, Box(R.x + 0.2, R.y + 0.55, R.w - 0.4, R.h - 0.65), size=15, min_size=10,
