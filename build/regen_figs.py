@@ -41,7 +41,7 @@ ONLY = set(sys.argv[1:])
 sys.path.insert(0, HERE)
 import deckkit  # noqa: E402
 # clean(Apple) 테마로 바꾼 주차의 그림 — 테마 전환은 되돌릴 수 없으므로 마지막에 그린다
-CLEAN = {"week1_assets.py", "figs_w1.py"}
+CLEAN = {"week1_assets.py", "figs_w1.py", "week2_figs.py", "week3_figs.py", "assets/week4/make_figs.py"}
 order = sorted(MODULES.items(), key=lambda kv: kv[0] in CLEAN)
 for script, funcs in order:
     if script in CLEAN and deckkit.STYLE != "apple":
