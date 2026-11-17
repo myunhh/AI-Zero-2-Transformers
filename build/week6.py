@@ -12,6 +12,18 @@ A = lambda p: os.path.join(HERE, "assets", p)
 OUT = os.path.join(HERE, "..", "lectures", "week06_transformer_complete.pptx")
 
 d = Deck(6, "Transformer 완성: 조립·학습·생성", date="2026-11-09", theme="clean")
+for _t in d.prs.slides[0].shapes._spTree.iter(qn("a:t")):  # 표지 제목: '학/습' 중간 줄바꿈 대신 콜론 뒤에서 나눈다
+    if _t.text == d.title:
+        import copy as _copy
+        _r = _t.getparent()
+        _r2 = _copy.deepcopy(_r)
+        _t.text, _r2.find(qn("a:t")).text = "Transformer 완성:", "조립·학습·생성"
+        _br = _r.makeelement(qn("a:br"), {})
+        if _r.find(qn("a:rPr")) is not None:
+            _br.append(_copy.deepcopy(_r.find(qn("a:rPr"))))
+        _r.addnext(_br)
+        _br.addnext(_r2)
+        break
 
 # ============================================================ 도입
 d.question("참조만으로\n시퀀스 모델을 만들면?",
@@ -19,9 +31,9 @@ d.question("참조만으로\n시퀀스 모델을 만들면?",
            notes="마지막 주. 지난주의 attention 블록에 FFN, residual, LayerNorm을 붙여 층을 완성하고, mask와 teacher forcing으로 정답을 훔쳐보지 않게 학습시키고, "
                  "토큰을 하나씩 생성한다. 그리고 비용을 계산하고, 직접 실험하는 법과 Transformer 이후의 길을 본다. 1주차의 도착점 그림을 오늘 모두 채운다.")
 
-d.bridge(["**Attention**: 점수 → softmax → 가중합", "Q · K · V와 **Multi-head**, shape (B, H, N, d_h)", "Self-attention + **위치 인코딩**"],
-         ["attention만으로는 **토큰별 비선형 변환**이 없다", "깊게 쌓기 · 정답을 **훔쳐보지 않고** 학습하기 · **생성**하기"],
-         ["**참조만으로**", "**시퀀스 모델을 만들면?**", "조립 → 학습 → 생성 → 그 이후"])
+d.bridge(["**Attention**: 점수 → softmax → 가중합", "Q · K · V와 **Multi-head**, shape (B, H, N, d_h)", "Self-attention + **위치 인코딩**"],
+         ["attention만으로는 **토큰별 비선형 변환**이 없다", "깊게 쌓기 · 정답을 **훔쳐보지 않고** 학습하기 · **생성**하기"],
+         ["**참조만으로**", "**시퀀스 모델을 만들면?**", "조립 → 학습 → 생성 → 그 이후"])
 
 d.roadmap(["Encoder 한 층 완성: FFN · Residual · LayerNorm", "Decoder: 정답을 훔쳐보지 않고 배우기 · shape과 파라미터 세기",
            "학습: 확률을 정답 쪽으로", "생성과 비용: KV Cache · 연산량 · 메모리",
@@ -80,7 +92,7 @@ L, R = s.cols(0.55)
 s.image(A("week6/ln_axis.png"), L)
 s.formula("LN(x) = γ ⊙ (x − μ) / √(σ² + ε) + β", Box(R.x, R.y, R.w, 0.9), size=17)
 s.table(["x", "μ", "분산 σ²", "(x − μ) / σ"], [["(1, 2, 3, 4)", "2.5", "1.25", "(−1.34, −0.45, 0.45, 1.34)"]],
-        Box(R.x, R.y + 1.15, R.w, 1.0), size=15, align="cccc")
+        Box(R.x, R.y + 1.15, R.w, 1.1), size=15, align="cccc", widths=[1.35, 0.6, 0.9, 2.65])
 s.bullets(["**토큰마다** d개 값으로 μ, σ 계산", "γ, β (d차원)는 학습되고 모든 토큰이 **공유**", "batch 전체가 아니다 (≠ BatchNorm)"],
           Box(R.x, R.y + 2.4, R.w, R.h - 2.4), size=15)
 
@@ -110,10 +122,10 @@ mid, low = bot.top(1.45, gap=0.25)
 s.flow([{"head": "X", "body": "(B, S, d)"}, {"head": "Self-attention", "body": "+ 잔차 · LN"}, {"head": "FFN", "body": "+ 잔차 · LN"},
         {"head": "X′", "body": "(B, S, d)", "tone": "dark"}, {"head": "× 6층", "body": "최종 출력 **E**", "tone": "accent"}], mid,
        body_size=14, head_size=16, gap=0.35)
-s.bullets(["**잔차** x + Sublayer(x): 더하려면 **같은 shape** → W_O, W2가 모두 **d**로 복귀 — 3주차 ResNet의 지름길 (안정성을 **보장**하지는 않음)",
+s.bullets(["**잔차** x + Sublayer(x): 더하려면 **같은 shape** → W_O, W2가 모두 **d**로 복귀 — 3주차 ResNet의 지름길 (안정성을 **보장**하지는 않음)",
            "**Dropout**: 학습 때 일부 값을 무작위로 0 — 과적합 억제 (3주차 AlexNet), 평가 때는 끈다",
            "Self-attention으로 **다른 위치의 정보를 모으고**, FFN으로 **각 위치의 표현을 바꾼다**",
-           "‘같은 층 반복’ = 같은 설계일 뿐, **층마다 파라미터는 별개**"], low, size=15)
+           "‘같은 층 반복’ = 같은 설계일 뿐, **층마다 파라미터는 별개**"], low, size=14)
 
 # ============================================================ Part 2
 d.part(2, "Decoder: 정답을 훔쳐보지 않고 배우기", "정답 문장을 입력으로 주면서도 자기 정답을 보지 못하게 하려면? — 그리고 한 샘플을 끝까지 따라가며 파라미터를 센다")
@@ -141,7 +153,7 @@ top, bot = s.area.top(2.8, gap=0.25)
 s.image(A("week6/shift.png"), top)
 L, R = bot.cols(0.5, gap=0.35)
 s.bullets(["학습 때 **이전 정답**을 입력으로 = **teacher forcing**",
-           "입력 ‘I’ 위치의 목표는 ‘am’ → 현재 입력(**대각선**)은 봐도 된다",
+           "입력 ‘I’ 위치의 목표는 ‘am’ → 현재 입력(**대각선**)은 봐도 된다",
            "문제는 **뒤쪽** 입력을 보는 것 → 다음 장의 causal mask"], L, size=15)
 s.callout("**왜 학습은 병렬인가** — 정답 prefix가 모두 주어지므로 shift + mask로 모든 위치를 **한 번에** 예측 (RNN처럼 기다리지 않음). "
           "생성은 다음 입력이 **아직 없어** 순차적 — 둘은 **모순이 아니다**. 단, 층 사이의 의존은 남는다.", R, kind="key", size=14)
@@ -155,7 +167,7 @@ s.image(A("week6/causal_mask.png"), Box(L.x, L.y, L.w, L.h - 0.35))
 s.formula("A = softmax( QKᵀ/√d_h + M ),  M = −∞ (미래)", Box(R.x, R.y, R.w, 0.95), size=16)
 s.table(["5주차 4토큰 예제 · Query B의 행", "A", "B", "C", "D"], [["mask 없음", "0.14", "0.29", "0.29", "0.29"],
                                                                ["−∞ mask", "**0.33**", "**0.67**", "0", "0"]],
-        Box(R.x, R.y + 1.2, R.w, 1.3), size=14, align="lcccc", highlight=[1], widths=[2.6, 1, 1, 1, 1])
+        Box(R.x, R.y + 1.2, R.w, 1.3), size=14, align="lcccc", highlight=[1], widths=[3.2, 0.85, 0.85, 0.85, 0.85])
 s.bullets(["미래(C, D) 비중이 사라지고 나머지가 **재정규화**된다",
            "점수를 **0으로 바꾸면** exp(0) = 1 → 오히려 비중을 받는다 (**새어 나감**)",
            "mask는 **softmax 전**에 · FP16에서는 큰 음수의 **dtype** 주의"], Box(R.x, R.y + 2.75, R.w, R.h - 2.75), size=15)
@@ -169,9 +181,9 @@ s.table(["mask", "무엇을 막나", "어디에 적용하나"],
         [["Causal", "미래 target 위치 참조", "Decoder self-attention 점수"], ["Source key padding", "source의 PAD 위치 참조", "Encoder self-attention · cross-attention"],
          ["Target key padding", "target의 PAD 위치 참조", "Decoder self-attention"], ["Loss ignore", "PAD 정답이 손실·지표에 들어가는 것", "cross-entropy의 ignore_index · 지표 집계에서 제외"]],
         Box(s.area.x, s.area.y, s.area.w, 2.6), widths=[2.4, 3.8, 4.8], size=15)
-L, R = Box(s.area.x, s.area.y + 2.9, s.area.w, s.area.h - 2.9).cols(0.5, gap=0.4)
+L, R = Box(s.area.x, s.area.y + 2.9, s.area.w, s.area.h - 2.9).cols(0.45, gap=0.4)
 s.callout("padding mask는 PAD **Query의 출력**을 0으로 만들지 않는다 → loss · pooling · 평가에서 따로 제외", L, kind="tip", size=15)
-s.callout("==API 주의== `F.scaled_dot_product_attention`: True = **허용** / `nn.MultiheadAttention`: True = **차단**", R, kind="warn", size=15)
+s.callout("==API 주의== `F.scaled_dot_product_attention`: True = **허용** / `nn.MultiheadAttention`: True = **차단**", R, kind="warn", size=14)
 
 s = d.slide("Cross-attention: Decoder가 원문을 참조한다", lead="Q는 Decoder에서, K · V는 Encoder 최종 출력 E에서 — 점수 표는 T × S", stage="아이디어",
             notes="4주차 Seq2Seq의 병목을 푼 5주차 attention이 바로 여기 들어간다. Decoder의 각 위치가 Query가 되어 source 전체(E)를 참조한다. "
@@ -179,10 +191,10 @@ s = d.slide("Cross-attention: Decoder가 원문을 참조한다", lead="Q는 Dec
                   "층마다 Encoder를 다시 실행하는 구조가 아니다 — Encoder는 한 번만 실행한다. cross-attention에는 causal mask가 필요 없다(source 전체를 봐도 target 누출이 아님), source padding mask만.")
 top, bot = s.area.top(1.0, gap=0.3)
 s.formula("CrossAttn(D, E) = softmax( (D W_Q)(E W_K)ᵀ / √d_h ) (E W_V)", top, size=20)
-rest = s.cards([{"head": "출처", "body": ["Q ← Decoder 표현 (T개)", "K, V ← Encoder 최종 출력 **E** (S개)"]},
+rest = s.cards([{"head": "출처", "body": ["Q ← Decoder 표현 (T개)", "K, V ← Encoder 최종 출력 **E** (S개)"]},
                 {"head": "shape", "body": ["점수 표 **T × S**", "출력 길이 = Query 수 **T**"]},
                 {"head": "구조", "tone": "accent", "body": ["Encoder는 **한 번만** 실행", "모든 Decoder 층이 같은 E를 참조", "층마다 자기 **투영 가중치**"]}],
-               bot, cols=3, body_size=16, head_size=18)
+               bot, cols=3, body_size=14.5, head_size=18)
 s.callout("mask: causal은 **필요 없다** (source는 target의 미래가 아님) — source padding mask만.",
           Box(rest.x, rest.y + 0.1, rest.w, 0.8), kind="tip", size=16)
 
@@ -219,7 +231,7 @@ s.formula("층당 ≈ 4d² (attention) + 2·d·d_ff (FFN)", top, size=24)
 L, R = bot.cols(0.55, gap=0.4)
 s.table(["항목 (d = 512, d_ff = 2048)", "파라미터"], [["Encoder 층 (≈ 12d²)", "3.15M"], ["Decoder 층 (≈ 16d², cross 포함)", "4.19M"],
                                                    ["6 + 6층", "44.0M"], ["공유 임베딩 (≈ 37k × 512)", "18.9M"], ["합계 (bias · Norm 제외)", "**≈ 63M** (논문 65M)"]],
-        L, size=15, align="lc", highlight=[4])
+        L, size=15, align="lc", highlight=[4], widths=[4.1, 2.3])
 s.bullets(["d를 2배로 → 층 파라미터 **4배** (d²)", "층 수 L을 2배로 → **2배**", "attention 가중치 A는 파라미터가 **아니다**",
            "외우지 말고 **유도**할 수 있으면 된다"], R)
 
@@ -238,15 +250,15 @@ s.table(["정답 토큰", "I", "am", "a", "student", "EOS"], [["p(정답)", "0.5
                                                       ["−log p", "0.693", "0.916", "0.511", "0.357", "0.105"]], Box(L.x, L.y, L.w, 1.3),
         size=14, align="cccccc")
 s.bullets(["평균 NLL = **0.516**, perplexity = e^0.516 ≈ **1.68**"], Box(L.x, L.y + 1.5, L.w, 0.7), size=16)
-s.callout("PAD 토큰은 분모와 분자에서 **제외** — 집계 단위(토큰 평균 / 문장 평균)를 명시한다.", Box(L.x, L.y + 2.3, L.w, 1.0), kind="tip", size=15)
-s.bullets(["CrossEntropyLoss에는 **logits** (softmax 전)", "(B, T, |V|) → **(B·T, |V|)**", "정답 (B, T) → **(B·T)**",
-           "`ignore_index = PAD`", ("loss와 accuracy 양쪽에서", 1)], R)
+s.callout("PAD 토큰은 분모와 분자에서 **제외** — 집계 단위(토큰 평균 / 문장 평균)를 명시한다.", Box(L.x, L.y + 2.3, L.w, 1.0), kind="tip", size=15)
+s.bullets(["CrossEntropyLoss에는 **logits** (softmax 전)", "(B, T, |V|) → **(B·T, |V|)**", "정답 (B, T) → **(B·T)**",
+           "`ignore_index = PAD`", ("loss와 accuracy 양쪽에서", 1)], R, size=16)
 
 s = d.slide("한 학습 step의 순서", lead="batch → forward → masked CE → backward → step — 1주차 학습 루프 그대로", stage="코드",
             notes="원자료의 코드. model.train()으로 dropout을 켜고, 기울기를 지우고, source와 한 칸 민 target 입력으로 logits를 계산한다. "
                   "loss는 펼친 logits와 정답으로 cross-entropy(ignore_index=PAD). backward로 기울기, clip_grad_norm_으로 기울기 크기를 1.0으로 제한(교육용 보호 장치), step으로 갱신. "
                   "원자료 주의: 이 짧은 코드가 원논문의 학습 recipe 전체와 같다는 뜻은 아니다.")
-L, R = s.cols(0.62)
+L, R = s.cols(0.58)
 s.code("model.train()\n"
        "optimizer.zero_grad(set_to_none=True)\n"
        "logits = model(source_ids, target_input_ids)  # (B, T, |V|)\n"
@@ -259,8 +271,8 @@ s.code("model.train()\n"
        "optimizer.step()", L, size=13)
 cb = s.last_code_box
 s.callout("gradient clipping은 교육용 보호 장치 — 이 코드가 원논문 recipe 전체는 아니다.", Box(L.x, cb.b + 0.25, L.w, 0.8), kind="tip", size=15)
-s.bullets(["1주차: forward → loss → backward → update", "`target_input_ids` = BOS + 정답[:-1]", "`target_labels` = 정답 + EOS",
-           "clip: 기울기 **폭주** 방지 (4주차)"], R)
+s.bullets(["1주차: forward → loss → backward → update", "`target_input_ids` = BOS + 정답[:-1]", "`target_labels` = 정답 + EOS",
+           "clip: 기울기 **폭주** 방지 (4주차)"], R, size=16)
 
 s = d.slide("무엇을 기록할까 — 지표와 점검 순서", lead="teacher-forced 지표와 실제 생성 성능은 다르다. loss가 안 떨어지면 작은 과적합부터", stage="검증",
             notes="NLL(PAD·평균 단위·smoothing 여부 명시), perplexity(같은 tokenizer·데이터에서만 비교, label-smoothed loss의 exp와 섞지 않기), token accuracy(한 시퀀스의 작은 오류를 가릴 수 있음), "
@@ -283,14 +295,14 @@ s = d.slide("원논문의 학습 조건", lead="Adam(β1 0.9, β2 0.98) · warm-
                   "label smoothing 0.1은 정답을 확률 1로 몰아가지 않게 완화 — perplexity는 나빠지지만 정확도·BLEU는 좋아졌다고 보고. "
                   "하드웨어: NVIDIA P100 8장, base 100k step 약 12시간, big 300k step 약 3.5일. 결과: WMT'14 영→독 BLEU 27.3(base), 28.4(big), 영→프 41.8(big). 추론: beam 4, 길이 페널티 α = 0.6. "
                   "이 조건들은 모델 구조와 별도의 실험 조건이다.")
-L, R = s.cols(0.52)
+L, R = s.cols(0.48)
 s.image(A("week6/lr_schedule.png"), L)
-s.table(["항목", "원논문 (base / big)"], [["Optimizer", "Adam β1 0.9, β2 0.98, ε 1e−9"], ["학습률", "warm-up 4000 → step^−1/2 감소 (최고 ≈ 7e−4)"],
+s.table(["항목", "원논문 (base / big)"], [["Optimizer", "Adam β1 0.9, β2 0.98, ε 1e−9"], ["학습률", "warm-up 4000 → step^−1/2 감소 (최고 ≈ 7e−4)"],
                                         ["규제", "dropout 0.1 · label smoothing 0.1"], ["하드웨어", "P100 × 8 · base 약 12시간 · big 약 3.5일"],
-                                        ["결과 (BLEU)", "영→독 27.3 / 28.4 · 영→프 41.8 (big)"]], R, size=14, widths=[1.4, 3.6])
+                                        ["결과 (BLEU)", "영→독 27.3 / 28.4 · 영→프 41.8 (big)"]], R, size=13.5, widths=[1.25, 3.75])
 
 # ============================================================ Part 4
-d.part(4, "생성과 비용: KV Cache · 연산량 · 메모리", "학습 때의 정답 prefix가 없다 — 토큰을 하나씩 만들면 무엇이 반복되나?")
+d.part(4, "생성과 비용: KV Cache · 연산량 · 메모리", "학습 때의 정답 prefix가 없다 — 토큰을 하나씩 만들면 무엇이 반복되나?")
 
 s = d.slide("자기회귀 생성: 토큰을 하나씩", lead="source는 한 번 인코딩, BOS에서 시작해 마지막 위치의 logits로 다음 토큰을 고르고 붙이기를 반복",
             stage="아이디어",
@@ -313,7 +325,7 @@ s = d.slide("토큰 선택은 모델과 별도의 정책", lead="같은 모델, 
 s.table(["정책", "방법", "특징"], [["Greedy", "가장 높은 점수의 토큰", "단순, 전체 최적은 **보장 안 됨**"], ["Sampling", "분포에서 표본 추출", "다양하지만 매번 다르다"],
                                   ["Temperature τ", "softmax(logits / τ) 후 선택", "분포의 뾰족함 조절 (2주차) — **재학습 아님**"],
                                   ["Top-k · Top-p", "상위 후보만 남기고 샘플링", "엉뚱한 저확률 토큰 방지"],
-                                  ["Beam search", "여러 후보 prefix 유지", "계산 증가 · 길이 정규화 영향 (beam 4, 길이 페널티 α = 0.6)"]],
+                                  ["Beam search", "여러 후보 prefix 유지", "계산 증가 · 길이 정규화 영향 (beam 4, 길이 페널티 α = 0.6)"]],
         Box(s.area.x, s.area.y, s.area.w, 3.4), widths=[2.0, 3.8, 5.0], size=15)
 s.callout("정책은 출력 분포를 **사용하는 방식**이지 Q/K/V 가중치를 바꾸는 학습이 아니다. 비교 전에 과제의 평가 목표부터 정한다.",
           Box(s.area.x, s.area.y + 3.65, s.area.w, 0.9), kind="tip", size=16)
@@ -327,7 +339,7 @@ s = d.slide("KV Cache: 바뀌지 않는 것을 보관", lead="과거 토큰의 �
 L, R = s.cols(0.64)
 s.image(A("week6/kv_cache.png"), L)
 s.bullets(["저장: 과거의 **K, V** (층마다)", "저장 안 함: **Q** (현재 토큰만 필요)", "**Prefill** → 첫 토큰까지 시간 (TTFT)",
-           "**Decode** → 토큰당 지연", "남는 것: **생성 루프** + 새 Q가 **모든 과거 K** 참조",
+           "**Decode** → 토큰당 지연", "남는 것: **생성 루프** + 새 Q가 **모든 과거 K** 참조",
            "==주의== 가중치 · adapter · position · mask가 다르면 cache를 **공유하면 안 된다**"], R, size=15)
 
 s = d.slide("“Transformer는 O(N²)”만으로는 부족하다", lead="한 블록 MACs ≈ 4Nd² (투영) + 2N²d (attention) + 2N·d·d_ff (FFN)", stage="계산",
@@ -388,7 +400,7 @@ s.table(["평가 길이", "Raw NLL", "teacher-forced 토큰 정확도", "greedy 
         Box(s.area.x, s.area.y, s.area.w, 1.5), widths=[2.6, 1.6, 3.4, 3.2], size=16, align="lccc")
 s.cards([{"head": "읽는 법 ①", "body": ["훈련 batch NLL 2.90 → 1.23, 평가(3–8) NLL 1.045로 **내려갔지만**", "완전한 수열 생성은 **아직**"]},
          {"head": "읽는 법 ②", "body": ["토큰 정확도와 **exact match**는 다르다", "생성은 오류가 **누적**된다"]},
-         {"head": "읽는 법 ③", "tone": "accent", "body": ["긴 입력에서 떨어져도 **구현 오류로 단정 X**", "학습 분포 밖 — 단일 실행 · 400 step"]}],
+         {"head": "읽는 법 ③", "tone": "accent", "body": ["긴 입력에서 떨어져도 **구현 오류로 단정 X**", "학습 분포 밖 — 단일 실행 · 400 step"]}],
         Box(s.area.x, s.area.y + 1.8, s.area.w, s.area.h - 1.8), cols=3, body_size=16, head_size=17)
 
 s = d.slide("Ablation: 질문을 통제된 비교로", lead="“Transformer가 더 좋다”가 아니라 — 어떤 조건에서 어떤 부품이 어떤 지표에 영향을 주는가", stage="실습",
@@ -409,7 +421,7 @@ s = d.slide("실험 기록과 최종 프로젝트", lead="작은 과제 · 최�
                   "네 가지 그림: 길이–정확도, step–loss, 품질–지연, 길이–메모리. 최종 프로젝트 배점(제안): 문제와 가설 20, 구현 정확성 30, 실험 설계와 결과 25, 해석과 한계 15, 설명 발표 10. "
                   "예상과 다른 결과라도 조건과 설명을 정확히 정리했다면 좋은 연구 연습이다.")
 s.cards([{"head": "작은 과제", "bullets": True, "body": ["복사: output = input", "반전: 순서 뒤집기", "기호 치환: 정해진 매핑"]},
-         {"head": "최소 기록 필드", "bullets": True, "body": ["run_id · commit · seed · task", "구조 · mask · norm 위치", "NLL · 정확도 · exact match · 지연 · 메모리"]},
+         {"head": "최소 기록 필드", "bullets": True, "body": ["run_id · commit · seed · task", "구조 · mask · norm 위치", "NLL · 정확도 · exact match · 지연 · 메모리"]},
          {"head": "네 가지 그림", "tone": "accent", "bullets": True, "body": ["길이 – 정확도", "step – loss", "품질 – 지연 · 길이 – 메모리"]}],
         cols=3, body_size=15, head_size=17)
 s.area = Box(s.area.x, s.area.y + 2.75, s.area.w, s.area.h - 2.75)
@@ -422,16 +434,16 @@ s.callout("최종 발표의 세 질문: ① 어느 가정에서만 결론이 성
 # ============================================================ Part 6
 d.part(6, "Transformer 이후, 그리고 과정 마무리", "원형에서 무엇을 유지하고, 무엇을 바꾸었나? — 그리고 여섯 질문을 다시 본다")
 
-s = d.slide("세 가지 조립 방식", lead="Encoder-only · Decoder-only · Encoder–Decoder — 반쪽을 떼는 것이 아니라 mask · 목표 · head가 함께 달라진다",
+s = d.slide("세 가지 조립 방식", lead="반쪽을 떼어 낸 것이 아니다 — 세 방식은 mask · 목표 · head가 함께 달라진다",
             stage="정리",
             notes="Encoder-only(BERT, 2018): 양방향 self-attention, 가려진 토큰 복원(masked LM)으로 사전학습 후 작업별 head. "
                   "Decoder-only(GPT, 2018~): causal self-attention, 다음 토큰 예측. 일반적인 순수 텍스트 Decoder-only에는 원형의 cross-attention이 없다. "
                   "Encoder–Decoder(원형 2017, T5 2019): 입력을 읽고 조건부 출력 생성(text-to-text, span corruption 등). "
                   "BERT의 masked LM은 '미래 정답을 보고 다음 토큰을 예측'하는 누출과 다르다 — 입력에서 가린 위치를 복원하는 별도 목표. 무엇이 입력이고 무엇이 정답인지로 판단한다.")
-L, R = s.cols(0.55)
+L, R = s.cols(0.5)
 s.image(A("week6/archs.png"), L)
 s.table(["구조", "mask · 목표", "예"], [["Encoder-only", "양방향 · 가려진 토큰 복원", "BERT (2018)"], ["Decoder-only", "causal · 다음 토큰 예측", "GPT (2018~)"],
-                                     ["Encoder–Decoder", "조건부 생성 (text-to-text)", "원형 (2017) · T5 (2019)"]], Box(R.x, R.y, R.w, 2.1), size=14, widths=[2.0, 2.8, 1.8])
+                                     ["Encoder–Decoder", "조건부 생성 (text-to-text)", "원형 (2017) · T5 (2019)"]], Box(R.x, R.y, R.w, 2.1), size=13.5, widths=[1.75, 2.45, 1.7])
 s.bullets(["Decoder-only에는 보통 **cross-attention이 없다**", "BERT의 masked LM ≠ 정답 누출", ("무엇이 입력이고 무엇이 정답인가로 판단", 1)],
           Box(R.x, R.y + 2.35, R.w, R.h - 2.35), size=15)
 
@@ -465,11 +477,11 @@ s = d.slide("여섯 질문으로 다시 보기", lead="1943 → 2017 → 이후:
                   "W4 먼 정보를 기억하려면? → RNN·LSTM·Seq2Seq. W5 원문을 다시 보면? → Attention·Q/K/V·Multi-head. W6 참조만으로 만들면? → Transformer. "
                   "그리고 Transformer 안에는 이 모든 답이 들어 있다: 텐서·학습 루프(W1), MLP=FFN·softmax·CE(W2), Residual·LayerNorm(W3), 임베딩·Encoder–Decoder(W4), attention(W5). "
                   "원자료 주의: 계보는 교육적 연결이며, 각 모델이 이전 모델을 완전히 대체했다는 주장이 아니다.")
-top, bot = s.area.top(2.8, gap=0.3)
+top, bot = s.area.top(2.65, gap=0.25)
 s.image(A("week6/genealogy.png"), top)
 s.table(["Transformer 안의 부품", "처음 배운 곳"], [["텐서 · 손실 · 경사하강 · 학습 루프", "Week 1"], ["FFN(=MLP) · 역전파 · softmax + cross-entropy", "Week 2"],
                                                ["Residual · LayerNorm", "Week 3"], ["임베딩 · 다음 토큰 확률 · Encoder–Decoder", "Week 4"],
-                                               ["Attention · Q/K/V · Multi-head · 위치 인코딩", "Week 5"]], bot, widths=[7, 2], size=14, align="lc")
+                                               ["Attention · Q/K/V · Multi-head · 위치 인코딩", "Week 5"]], bot, widths=[7, 2], size=13.5, align="lc")
 
 s = d.slide("마지막 설명 과제", lead="빈 종이에 입력 ID부터 다음 토큰까지 — 각 구간의 shape, 파라미터, mask를 적고 설명한다", stage="실습",
             notes="원자료의 마지막 설명 과제와 구술 평가. 빈 종이에 입력 ID → 임베딩 + PE → Encoder → Decoder self / cross attention → FFN → logits → 다음 토큰을 그린다. "
@@ -482,11 +494,11 @@ s.flow([{"head": "ID", "body": "(B, S)"}, {"head": "임베딩 + PE", "body": "(B
         {"head": "다음 토큰", "body": "선택 정책", "tone": "dark"}], top, body_size=13, head_size=15, gap=0.3)
 L, R = bot.cols(0.5, gap=0.4)
 s.card(L, "각 구간에 적을 것", ["입력 · 출력 **shape**", "학습되는 **파라미터**", "정보가 이동하는 **방향**", "**mask**가 막는 연결"], bullets=True)
-s.card(R, "구술 평가", ["처음 보는 d, H, S, T로 입력 → logits 추적", "하나를 바꾸면? 위치 정보 제거 / 잘못된 mask / KV Cache 추가",
+s.card(R, "구술 평가", ["처음 보는 d, H, S, T로 입력 → logits 추적", "하나를 바꾸면? 위치 정보 제거 / 잘못된 mask / KV Cache 추가",
                               "“이 head는 주어를 이해한다” → “특정 위치에 높은 가중치가 **관찰**되었다”"], tone="accent", bullets=True)
 
 # ============================================================ 마무리
-d.summary(["층 = attention(위치 간 결합) + **FFN**(위치별 변환), 각각 **잔차 합 + LayerNorm** — shape (B, N, d) 유지",
+d.summary(["층 = attention(위치 간 결합) + **FFN**(위치별 변환), 각각 **잔차 합 + LayerNorm** — shape (B, N, d) 유지",
            "**shift + causal mask(−∞)**로 정답을 훔쳐보지 않고 모든 위치를 병렬 학습",
            "Cross-attention: Q는 Decoder, K·V는 Encoder 출력 E — 점수 표 T × S",
            "파라미터 ≈ 층당 4d² + 2d·d_ff, 연산 ≈ 4Nd² + 2N²d + 2Nd·d_ff — **O(N²)만이 아니다**",
@@ -525,8 +537,8 @@ d.references([["[22] Vaswani et al. (2017). Attention Is All You Need", "Fig.1 �
               ["[34] ViT (2020) · [41] DiT (2022) · [35]–[38] RoPE · GQA · FlashAttention", "원형 표에서 무엇이 바뀌었나"]])
 
 d.handoff(["여섯 질문을 따라", "텐서 → MLP → CNN → RNN → Attention → **Transformer**", "그림의 모든 상자를 **왜 필요한지**로 설명"],
-          ["언어 생성 → Decoder-only · KV Cache", "시각 → patch · 위치 · pooling", "효율 → 실제 병목 · kernel · 메모리 이동", "생성 모델 → diffusion과 DiT"],
-          ["**관심 분야 하나를 골라**", "원형 표에 꽂아 넣고", "무엇이 바뀌었는지 설명해 보기"],
+          ["언어 생성 → Decoder-only · KV Cache", "시각 → patch · 위치 · pooling", "효율 → 실제 병목 · kernel · 메모리 이동", "생성 모델 → diffusion과 DiT"],
+          ["**관심 분야 하나를 골라**", "원형 표에 꽂아 넣고", "무엇이 바뀌었는지 설명해 보기"],
           notes="과정 마무리. 원자료의 '다음 학습 방향을 고르는 기준'. 관심 분야에 따라 다음 단계를 고르되, 먼저 원형 Transformer를 입력부터 출력까지 설명할 수 있는지 스스로 확인한다.")
 
 d.save(OUT)
