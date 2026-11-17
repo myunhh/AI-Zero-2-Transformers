@@ -57,7 +57,7 @@ def mat(ax, M, rows, cols, title=None, fmt="{:.2f}", cmap=CMAP, vmin=None, vmax=
         for j in range(M.shape[1]):
             v = M[i, j]
             if mask is not None and mask[i, j]:
-                ax.add_patch(plt.Rectangle((j - .5, i - .5), 1, 1, fc="#EEEEEE", ec="white", lw=1))
+                ax.add_patch(plt.Rectangle((j - .5, i - .5), 1, 1, fc=P.get("OFF", "#EEEEEE"), ec="white", lw=1))
                 txt = "−∞" if not np.isfinite(v) else fmt.format(v)
                 ax.text(j, i, txt, ha="center", va="center", fontsize=fs, color=GRAY)
                 continue
@@ -91,7 +91,7 @@ def fig_bottleneck():
     fig, axes = plt.subplots(1, 2, figsize=(13, 5.2))
     for ax in axes:
         ax.set_xlim(0, 10)
-        ax.set_ylim(0, 6.2)
+        ax.set_ylim(-0.4, 6.2)
         ax.axis("off")
     src = ["나는", "학교에", "간다", "<eos>"]
     # (a) fixed vector
@@ -111,7 +111,7 @@ def fig_bottleneck():
         rbox(ax, x, 4.6, 0.9, 0.8, f"$s_{t+1}$", fc=MINT2, fs=14, bold=True, color=TEAL)
         ax.text(x + .45, 5.75, w, ha="center", fontsize=12, color=DARK)
         arr(ax, 4.2, 3.65, x + .1, 4.6, color=ACC, lw=1.4, ms=10)
-    ax.text(0.4, 3.6, "입력 전체를\n벡터 하나로 요약", fontsize=14, color=GRAY)
+    ax.text(0.4, 4.75, "입력 전체를\n벡터 하나로 요약", fontsize=14, color=GRAY, va="center")
     # (b) attention
     ax = axes[1]
     ax.set_title("(b) Attention: 출력 시점마다 다른 가중합 $c_t$", fontsize=16, color=DARK, fontweight="bold")
@@ -122,8 +122,8 @@ def fig_bottleneck():
         rbox(ax, x, 1.5, 1.15, 0.8, f"$h_{j+1}$", fc=MINT2, fs=14, bold=True, color=TEAL)
         arr(ax, x + .575, 1.0, x + .575, 1.5, lw=1.5, ms=10)
         ax.plot([x + .575, 6.6], [2.3, 3.55], color=ACC, lw=1 + 9 * wts[j], alpha=.85, solid_capstyle="round")
-        ax.text(x + .575, 2.5 + 0.4 * (j % 2), f"α={wts[j]:.2f}", ha="center", fontsize=14, color=ACC,
-                fontweight="bold", bbox=dict(fc="white", ec="none", pad=1.5))
+        ax.text(x + .575, -0.05, f"α={wts[j]:.2f}", ha="center", va="center", fontsize=13, color=ACC,
+                fontweight="bold")
     rbox(ax, 6.1, 3.55, 1.0, 0.8, "$c_4$", fc=ACC, fs=18, bold=True, color="white")
     rbox(ax, 7.8, 3.55, 1.0, 0.8, "$s_4$", fc=MINT2, fs=14, bold=True, color=TEAL)
     arr(ax, 7.1, 3.95, 7.8, 3.95, color=ACC, lw=2)
@@ -194,7 +194,7 @@ def fig_arch():
         "Linear → vocabulary logits", "(B,T,d) → (B,T,|V|)")
     # E -> cross attention
     arr(ax, 4.6, 2.65, 6.55, 4.4, color=ACC, lw=2.5, ms=16)
-    ax.text(5.1, 1.55, "K, V ← E\nQ ← Decoder", fontsize=14, color=ACC, fontweight="bold", ha="center")
+    ax.text(6.0, 2.15, "K, V ← E\nQ ← Decoder", fontsize=12.5, color=ACC, fontweight="bold", ha="right", va="top")
     ax.set_ylim(0.05, 8.4)
     ax.text(0.2, 0.15, "위→아래로 읽기 · 층마다 파라미터는 별개\n최종 E가 모든 Decoder 층의 cross-attention으로 전달",
             fontsize=14, color=GRAY, va="bottom")
@@ -271,7 +271,7 @@ def fig_setup():
     fig, axes = plt.subplots(1, 3, figsize=(7.6, 5.6))
     for ax, M, name, c in zip(axes, (Q, K, V), ("Q (Query)", "K (Key)", "V (Value)"), (TEAL, TEAL2, ACC)):
         mat(ax, M, TOK, ["$f_1$", "$f_2$"], title=name, fmt="{:g}", fs=15, title_color=c,
-            hl_row=0 if name.startswith("Q") else None)
+            hl_row=0 if name.startswith("Q") else None, vmin=-1.5, vmax=3.2)
     fig.suptitle("4 tokens × 2 features — 숫자는 설명용(학습 결과 아님)", fontsize=12, color=GRAY, y=0.01)
     fig.tight_layout()
     save(fig, "attn_setup.png")
@@ -314,7 +314,7 @@ def fig_causal():
 # 9. why sqrt(d_h) ----------------------------------------------------------------------
 def fig_sqrt():
     rng = np.random.default_rng(0)
-    fig, axes = plt.subplots(1, 2, figsize=(13, 4.8))
+    fig, axes = plt.subplots(1, 2, figsize=(11.5, 6.2))
     rng2 = np.random.default_rng(0)
     ax = axes[0]
     dhs = [4, 16, 64, 256]
@@ -331,11 +331,11 @@ def fig_sqrt():
     for xi, r, s_ in zip(x, raw, sc):
         ax.text(xi - .2, r + .3, f"{r:.1f}", ha="center", fontsize=14, color=ACC)
         ax.text(xi + .2, s_ + .3, f"{s_:.1f}", ha="center", fontsize=14, color=TEAL)
-    ax.set_xticks(x, [f"$d_h$={d}" for d in dhs], fontsize=15)
+    ax.set_xticks(x, [f"$d_h$={d}" for d in dhs], fontsize=14)
     ax.tick_params(axis="y", labelsize=14)
     ax.set_ylim(0, max(raw) * 1.3)
     ax.set_ylabel("점수의 표준편차", fontsize=14)
-    ax.set_title(r"성분 평균 0·분산 1 가정: 표준편차 ≈ $\sqrt{d_h}$", fontsize=15, fontweight="bold", color=DARK)
+    ax.set_title("성분 평균 0·분산 1 가정\n" r"표준편차 ≈ $\sqrt{d_h}$", fontsize=15, fontweight="bold", color=DARK)
     ax.legend(frameon=False, fontsize=14, loc="upper left")
     ax.grid(axis="y", alpha=.25)
     ax = axes[1]
@@ -352,7 +352,7 @@ def fig_sqrt():
     ax.set_xticks(xx, [f"k{j+1}" for j in range(8)], fontsize=15)
     ax.tick_params(axis="y", labelsize=14)
     ax.set_ylim(0, 1.05)
-    ax.set_title("$d_h$=64, Key 8개: 스케일이 없으면 한 곳에 몰림", fontsize=15, fontweight="bold", color=DARK)
+    ax.set_title("$d_h$=64, Key 8개\n스케일이 없으면 한 곳에 몰림", fontsize=15, fontweight="bold", color=DARK)
     ax.legend(frameon=False, fontsize=14, loc="upper right")
     ax.grid(axis="y", alpha=.25)
     fig.tight_layout()
@@ -378,7 +378,7 @@ def fig_mha():
     bw, gap = 1.62, 0.33
     for i, (h, shp, fc, c) in enumerate(steps):
         x = 0.1 + i * (bw + gap)
-        rbox(ax, x, 2.3, bw, 1.25, h, fc=fc, ec=c, fs=14, bold=True, color=c)
+        rbox(ax, x, 2.3, bw, 1.25, h, fc=fc, ec=LINE if fc == "white" else fc, fs=14, bold=True, color=c)
         ax.text(x + bw / 2, 1.75, shp, ha="center", va="center", fontsize=14, color=DARK, family="DejaVu Sans Mono")
         if i < len(steps) - 1:
             arr(ax, x + bw + .03, 2.92, x + bw + gap - .03, 2.92, ms=11)

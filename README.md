@@ -1,6 +1,6 @@
 # AI Zero 2 Transformer — 6주 강의자료
 
-원자료 `AI Zero 2 Transformer` (HTML)를 AICA Lab 템플릿으로 만든 6회차 강의자료입니다.
+원자료 `AI Zero 2 Transformer` (HTML)로 만든 6회차 강의자료입니다. 디자인은 Apple 디자인 원칙(넓은 여백, 절제, 한 가지 강조색, 글자 위계)을 따른 자체 템플릿입니다.
 Transformer 이전 4주 + Transformer 2주, 원자료의 **여섯 질문**을 따라 시간순으로 진행합니다.
 
 | 주차 | 파일 | 중심 질문 | 내용 |
@@ -20,10 +20,12 @@ Transformer 이전 4주 + Transformer 2주, 원자료의 **여섯 질문**을 �
 ```bash
 pip install python-pptx matplotlib numpy pillow
 cd build
-python week1.py   # … week6.py → lectures/*.pptx
+python regen_figs.py   # 그림 다시 그리기 (선택)
+python week1.py        # … week6.py → lectures/*.pptx
 ```
 
-- `build/deckkit.py` — 템플릿(`build/Lab-template.pptx`)의 표지 · 구역 · Title and Content · 마지막 슬라이드와 본문 개체 틀을 그대로 쓰는 빌더. 표지/푸터의 행사명은 `EVENT` 상수로 바꿀 수 있습니다.
+- `build/deckkit.py` — 슬라이드 빌더. 각 주차 스크립트는 `deckkit.use_theme("clean")` + `Deck(..., theme="clean")`으로 `build/clean-template.pptx`(표지 · 본문 · 구역 레이아웃)를 씁니다. 표지/푸터의 과정명은 `EVENT` 상수로 바꿀 수 있습니다.
+- `build/make_clean_template.py` — `clean-template.pptx`를 만드는 스크립트 (기존 AICA 템플릿 `Lab-template.pptx`는 `theme="aica"`로 여전히 쓸 수 있음)
 - `build/CURRICULUM.md` — 흐름 설계와 원자료 장 → 주차 대응표
 - `build/assets/weekN/` — 그림 (생성 스크립트: `figs_w1.py`, `week1_assets.py`, `week2_figs.py`, `week3_figs.py`, `assets/week4/make_figs.py`, `week5_assets.py`, `week6_figs.py`)
 - `build/qa_grid.py` — LibreOffice로 렌더링해 검토용 이미지를 만드는 도구

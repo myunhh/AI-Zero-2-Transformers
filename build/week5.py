@@ -20,8 +20,8 @@ d.question("필요할 때 원문을\n다시 찾아보면?",
                  "입력의 위치별 표현을 모두 남겨 두고, 필요할 때마다 다른 비중으로 다시 참조한다. "
                  "이 한 가지 아이디어가 Self-attention, Q/K/V, Multi-head로 자라나 Transformer의 중심이 된다.")
 
-d.bridge(["문장을 토큰·임베딩으로", "RNN · LSTM으로 순서와 기억", "Seq2Seq: Encoder → **c** → Decoder"],
-         ["모든 입력을 **고정 벡터 c 하나**로 압축 — 병목", "h_t는 h_(t−1)이 필요 — **순차 계산**"],
+d.bridge(["문장을 토큰·임베딩으로", "RNN · LSTM으로 순서와 기억", "Seq2Seq:\nEncoder → **c** → Decoder"],
+         ["모든 입력을\n**고정 벡터 c 하나**로 압축\n— 병목", "h_t는 h_(t−1)이 필요 — **순차 계산**"],
          ["**필요할 때 원문을 다시 찾아보면?**", "그리고 그것을 모델의 **본체**로 쓰면?"])
 
 d.roadmap(["Attention (2014): 출력마다 다른 요약", "Self-attention과 Q · K · V", "Scaled dot-product를 숫자로",
@@ -118,7 +118,7 @@ s = d.slide("Self-attention: 문장이 스스로를 참조한다", lead="모든 
 rest = s.cards([{"head": "예시", "tone": "plain", "body": ["“그 **동물**은 너무 피곤해서 길을 건너지 않았다. **그것**은 …”",
                                                          "‘그것’의 표현을 만들 때 ‘동물’을 많이 참고하면 좋다"]},
                 {"head": "RNN", "body": ["먼 두 토큰이 만나려면 **N단계**를 거친다", "h_t는 h_(t−1)이 필요 → **순차**"]},
-                {"head": "Self-attention", "tone": "accent", "body": ["한 층에서 **직접** 만난다 (경로 길이 1)", "모든 위치를 **동시에** 계산"]}],
+                {"head": "Self-attention", "tone": "accent", "body": ["한 층에서 **직접** 만난다", ("경로 길이 1", 1), "모든 위치를 **동시에** 계산"]}],
                cols=3, body_size=16, head_size=18)
 s.callout("질문: 같은 입력 X에서 ‘비교할 기준’과 ‘가져올 내용’을 어떻게 만들까? → **Q · K · V**",
           Box(rest.x, rest.y + 0.1, rest.w, 0.9), kind="key", size=17)
@@ -131,7 +131,7 @@ s.table(["", "계산에서의 역할", "도서관 비유", "비유의 한계"],
         [["**Query (Q)**", "현재 위치가 Key들과 비교할 벡터", "찾고 싶은 것", "사용자가 입력한 **질문이 아니다** — 이미지 모델에도 있다"],
          ["**Key (K)**", "각 위치를 비교하기 위한 벡터", "책의 색인", "단어 문자열이나 DB key가 **아니다**"],
          ["**Value (V)**", "가중합으로 실제 결합될 벡터", "책의 내용", "원래 임베딩을 그대로 **복사하지 않는다**"]],
-        Box(s.area.x, s.area.y, s.area.w, 2.9), widths=[1.4, 3.2, 1.8, 4.6], size=16)
+        Box(s.area.x, s.area.y, s.area.w, 2.9), widths=[1.4, 3.0, 1.6, 5.0], size=16)
 s.callout("모두 **학습된 투영**으로 만든 벡터다. ‘중요도’라는 말은 어떤 기준의 중요도인지 정한 뒤에 쓴다 — 실제로는 loss를 줄이도록 학습된 내적 점수일 뿐.",
           Box(s.area.x, s.area.y + 3.2, s.area.w, 1.1), kind="warn", size=16)
 
@@ -150,7 +150,7 @@ s = d.slide("Self-attention이라고 Q = K = V는 아니다", lead="원본 X가 
                   "설령 Q=K여서 점수가 대칭이어도, 행마다 정규화하는 softmax 이후에는 일반적으로 대칭이 아니다. "
                   "왜 점수용(Q, K)과 내용용(V)을 나눌까? 어떤 특징으로 다른 토큰을 찾을지와, 그 토큰에서 어떤 정보를 전달할지를 따로 학습하는 자유를 준다. "
                   "이것은 설계 선택이지, 각 축이 미리 '주어', '동사' 같은 의미를 갖는다는 뜻이 아니다.")
-rest = s.cards([{"head": "Q ≠ K ≠ V", "body": ["같은 X, 다른 W_Q · W_K · W_V", "→ 값이 일반적으로 **다르다**"]},
+rest = s.cards([{"head": "Q ≠ K ≠ V", "body": ["같은 X, 다른 W_Q · W_K · W_V", "→ 값이 일반적으로 **다르다**"]},
                 {"head": "점수는 비대칭", "body": ["q_A · k_B ≠ q_B · k_A", "‘A가 B를 봄’ ≠ ‘B가 A를 봄’", "softmax 후에도 비대칭"]},
                 {"head": "왜 나누나?", "tone": "accent", "body": ["**찾는 기준**(Q·K)과 **가져올 내용**(V)을 따로 학습",
                                                                  "축마다 미리 정해진 의미는 **없다**"]}],
@@ -166,7 +166,7 @@ s.table(["", "예", "입력마다 바뀌나?", "optimizer가 갱신하나?"],
         [["파라미터", "W_Q, W_K, W_V, W_O", "아니오 — 모든 입력에 **공유**", "**예**"],
          ["활성값", "Q, K, V", "**예** — 입력·이전 층에 따라 계산", "아니오"],
          ["Attention 가중치", "A = softmax(QKᵀ / √d_h)\n(다음 Part에서 계산)", "**예** — 문장마다 다르다", "아니오 (gradient 경로에는 포함)"]],
-        Box(s.area.x, s.area.y, s.area.w, 2.5), widths=[2.0, 3.0, 3.4, 3.0], size=16)
+        Box(s.area.x, s.area.y, s.area.w, 2.5), widths=[2.0, 3.0, 3.2, 3.6], size=16)
 s.callout("추론 때 모델 가중치는 고정되어 있어도 **A는 입력마다 다르다** → ‘정적인 파라미터로 동적인 결합’",
           Box(s.area.x, s.area.y + 2.8, s.area.w, 0.9), kind="key", size=17)
 
@@ -194,7 +194,7 @@ s.image(A("week5/attn_setup.png"), L)
 s.table(["토큰", "q", "k", "v"], [["A", "(1, 0)", "(1, 0)", "(1, 0)"], ["B", "(0, 1)", "(0, 1)", "(0, 1)"],
                                  ["C", "(1, 1)", "(1, 1)", "(2, 2)"], ["D", "(−1, 0.5)", "(−1, 1)", "(−1, 1)"]],
         Box(R.x, R.y, R.w, 2.4), size=15, align="cccc")
-s.bullets(["q · k · v는 **투영이 끝난 값**이라고 가정 (X, W는 생략)", "d_h = 2 → 스케일 **√2**", "먼저 **Query A**의 행 하나를 손으로"],
+s.bullets(["q · k · v는 **투영이 끝난 값**이라고 가정 (X, W는 생략)", "d_h = 2 → 스케일 **√2**", "먼저 **Query A**의 행 하나를 손으로"],
           Box(R.x, R.y + 2.65, R.w, R.h - 2.65), size=16)
 
 s = d.slide("Query A를 손으로 계산", lead="점수 → ÷√2 → exp → 합으로 나누기 → Value 가중합", stage="계산",
@@ -237,15 +237,14 @@ s = d.slide("가중치를 해석할 때와 경계 조건", lead="큰 α ≠ 큰 
             notes="α_j가 크면 V_j의 기여 비중이 커지지만, V의 크기와 방향이 다르고 뒤에는 W_O, residual, FFN, 다음 층이 있다. 가중치 숫자 하나로 최종 출력 변화를 다 알 수 없다. "
                   "경계 조건: 어떤 행의 모든 Key가 mask로 가려지면 softmax의 확률 분포가 정의되지 않아 구현에 따라 NaN이나 0이 된다 → 유효한 Query에는 허용된 Key가 적어도 하나 있도록 설계. "
                   "attention dropout 뒤에는 개별 행의 합이 1이 아닐 수 있다.")
-s.cards([{"head": "해석할 때", "bullets": True, "body": ["α가 커도 **V의 크기·방향**이 다르다", "뒤에 W_O · residual · FFN · 다음 층이 있다",
+rest = s.cards([{"head": "해석할 때", "bullets": True, "body": ["α가 커도 **V의 크기·방향**이 다르다", "뒤에 W_O · residual · FFN · 다음 층이 있다",
                                                        "가중치 숫자 하나로 **최종 출력 변화**를 알 수 없다"]},
          {"head": "경계 조건", "tone": "accent", "bullets": True,
           "body": ["모든 Key가 가려진 행 → softmax **정의 안 됨** (NaN 등)", "→ 유효한 Query엔 허용된 Key를 **최소 하나**",
                    "attention dropout 뒤엔 행 합이 1이 아닐 수 있다"]}], cols=2, body_size=17, head_size=19)
-s.area = Box(s.area.x, s.area.y + 2.75, s.area.w, s.area.h - 2.75)
 s.callout("큰 attention 가중치를 봤다면 — ‘그 위치에 큰 참조 비중이 **관찰**되었다’고 말하고, "
-          "인과 해석은 **추가 검증**한다 (예: 그 위치를 가리거나 바꿔 출력 변화를 측정).",
-          Box(s.area.x, s.area.y, s.area.w, 1.2), kind="key", size=16)
+          "인과 해석은 **추가 검증**한다\n(예: 그 위치를 가리거나 바꿔 출력 변화를 측정).",
+          Box(rest.x, rest.y + 0.1, rest.w, 1.2), kind="key", size=16)
 
 # ============================================================ Part 4
 d.part(4, "Multi-head와 tensor shape", "한 번의 softmax는 한 가지 비교 방식 — 여러 관점으로 동시에 보려면?")
@@ -280,7 +279,7 @@ s = d.slide("PyTorch로 직접 구현", lead="투영 한 번 → head 축 만들
             notes="직접 구현한 multi-head self-attention. view(B, N, H, d_h).transpose(1, 2)가 핵심 shape 조작이다. softmax의 dim=-1은 Key 축. "
                   "nn.MultiheadAttention(8, 2)의 파라미터는 4 × (8×8 + 8) = 288. 출력 (2, 5, 8), head별 가중치 (2, 2, 5, 5). "
                   "실습: 직접 구현한 결과와 F.scaled_dot_product_attention의 결과가 같은지 확인해 보기.")
-L, R = s.cols(0.62)
+L, R = s.cols(0.6)
 s.code("import torch, torch.nn as nn\n"
        "B, N, d, H = 2, 5, 8, 2;  dh = d // H\n"
        "X = torch.randn(B, N, d)\n"
@@ -295,7 +294,7 @@ s.code("import torch, torch.nn as nn\n"
 s.bullets(["`view + transpose`: head 축 만들기", "`softmax(dim=-1)`: **Key 축**", "출력 shape = 입력 shape",
            "기대 출력: `torch.Size([2, 5, 8])`", ("head별 가중치 A: (2, 2, 5, 5)", 1),
            "`nn.MultiheadAttention(8, 2)`", ("파라미터 4 × (8·8 + 8) = **288**", 1),
-           "확인: `F.scaled_dot_product_attention(Q, K, V)`", ("와 `A @ V`가 같은지 `torch.allclose`로", 1)], R, size=16)
+           "확인: `F.scaled_dot_product_attention`", ("`(Q, K, V)`와 `A @ V`가 같은지 `torch.allclose`로", 1)], R, size=15)
 
 s = d.slide("Head를 늘리면 무엇이 달라지나", lead="d를 고정하고 d_h = d/H면 파라미터와 주요 연산량은 그대로 — head당 차원이 줄고 점수 표는 늘어난다",
             stage="검증",
@@ -323,7 +322,7 @@ top, bot = s.area.top(1.0, gap=0.3)
 s.formula("SA(P X) = P · SA(X)        (P: 순서를 섞는 순열)", top, size=24)
 rest = s.cards([{"head": "무슨 뜻인가", "tone": "accent", "bullets": True,
                  "body": ["순서를 섞으면 출력도 **똑같이 섞일 뿐**", "각 토큰의 출력은 ‘어떤 토큰들이 있나’만 반영",
-                          "“개가 사람을 물었다” vs “사람이 개를 물었다” → **구분 불가**"]},
+                          "“개가 사람을 물었다” vs “사람이 개를 물었다”", ("→ **구분 불가**", 1)]},
                 {"head": "구분할 것", "tone": "plain", "bullets": True,
                  "body": ["**등변성**: 섞으면 같이 섞임 (이것)", "**불변성**: 섞어도 그대로", "3주차 CNN의 이동 등변성과 같은 논리",
                           "causal mask가 있으면 이 증명이 그대로 적용되지 않는다"]}], bot, cols=2, body_size=16, head_size=18)
@@ -333,7 +332,7 @@ s = d.slide("임베딩에 위치를 더한다", lead="x = E[id] · √d + PE[pos
             notes="원형 Transformer는 임베딩에 √d를 곱하고 같은 차원(d)의 위치 벡터를 더한다. Encoder와 Decoder 모두. "
                   "입력 ID (B, S) → 임베딩 (B, S, d) → + PE (S, d) → (B, S, d) (broadcasting, 1주차). "
                   "원자료 주의: 더한다고 해서 토큰 내용과 위치가 완벽히 분리되어 저장된다는 뜻은 아니다. 같은 차원에 결합될 뿐이다.")
-top, bot = s.area.top(1.95, gap=0.3)
+top, bot = s.area.top(1.5, gap=0.35)
 s.flow([{"head": "ID", "body": "(B, S)"}, {"head": "임베딩 × √d", "body": "(B, S, d)"}, {"head": "+ 위치 벡터 PE", "body": "(S, d) → broadcasting", "tone": "accent"},
         {"head": "블록 입력", "body": "(B, S, d)", "tone": "dark"}], top, body_size=15, head_size=17)
 s.bullets(["Encoder와 Decoder **모두** 이 과정을 거친다", "더해도 **shape은 그대로** (1주차 broadcasting)",
@@ -349,9 +348,9 @@ s.formula(["PE(pos, 2i)   = sin( pos / 10000^(2i/d) )", "PE(pos, 2i+1) = cos( po
 L, R = bot.cols(0.62, gap=0.35)
 s.image(A("week5/pe.png"), L)
 s.table(["d = 8", "차원 0", "차원 1", "차원 2", "차원 3"], [["pos 1", "0.841", "0.540", "0.100", "0.995"],
-                                                     ["pos 2", "0.909", "−0.416", "0.199", "0.980"]], Box(R.x, R.y, R.w, 1.3), size=13, align="ccccc")
+                                                     ["pos 2", "0.909", "−0.416", "0.199", "0.980"]], Box(R.x, R.y, R.w, 1.65), widths=[0.95, 1, 1.15, 1, 1], size=14, min_size=12, align="ccccc")
 s.bullets(["표는 d = 8 (그림은 d = 64 · 32)", "i가 클수록 **느리게** 변한다", ("시계의 초침 · 분침 · 시침", 1), "학습 파라미터 **없음**"],
-          Box(R.x, R.y + 1.5, R.w, R.h - 1.5), size=15)
+          Box(R.x, R.y + 1.85, R.w, R.h - 1.85), size=15)
 
 s = d.slide("“sin/cos가 정답”은 아니다", lead="위치 단서가 필요하다는 것과 특정 함수가 필수라는 것은 다른 주장", stage="역사",
             notes="원논문도 학습형 위치 임베딩과 비교했고 비슷한 결과를 보고했다. 이후 상대 위치 방식, RoPE(회전 위치 임베딩, 2021), ALiBi(2021) 등 다양한 방식이 쓰인다(후속 변형). "
@@ -389,8 +388,8 @@ s.table(["종류", "Q의 출처", "K · V의 출처", "볼 수 있는 범위", "
         [["Encoder self-attention", "Encoder 입력 표현", "같은 표현", "유효한 입력 토큰 **전체**", "S × S"],
          ["Decoder masked self-attention", "Decoder 입력 표현", "같은 표현", "현재 위치와 **이전** 위치만", "T × T"],
          ["Cross-attention", "**Decoder** 표현", "**Encoder** 최종 출력", "유효한 source 전체", "**T × S**"]],
-        Box(s.area.x, s.area.y, s.area.w, 2.6), widths=[2.9, 2.2, 2.2, 3.0, 1.2], size=15)
-s.callout("S = source 길이, T = target 길이. Self / Cross = **출처**의 차이, Causal / 양방향 = **범위**의 차이 — 서로 다른 축. "
+        Box(s.area.x, s.area.y, s.area.w, 2.6), widths=[3.5, 2.1, 2.2, 2.9, 1.1], size=15)
+s.callout("S = source 길이, T = target 길이. Self / Cross = **출처**의 차이, Causal / 양방향 = **범위**의 차이 — 서로 다른 축.\n"
           "Cross-attention의 출력 길이는 **Query 수 T** (source 길이 S가 아니다).", Box(s.area.x, s.area.y + 2.9, s.area.w, 1.2), kind="key", size=16)
 
 # ============================================================ 마무리
@@ -433,7 +432,7 @@ d.references([["[17] Bahdanau, Cho & Bengio (2014). Neural Machine Translation b
              notes="번호는 원자료 참고문헌 번호. 처음부터 모든 실험을 읽기보다 표에 적은 절과 그림만 먼저 읽는다. "
                    "[39][40]은 원자료 참고문헌의 attention 해석 연구(가중치의 설명력 한계).")
 
-d.handoff(["출력마다 원문을 **다시 참조**하는 Attention", "모든 위치가 직접 만나는 **Self-attention**", "Q·K·V · Multi-head · 위치 인코딩"],
+d.handoff(["출력마다 원문을 **다시 참조**하는 Attention", "모든 위치가 직접 만나는\n**Self-attention**", "Q·K·V · Multi-head ·\n위치 인코딩"],
           ["attention만으로는 **토큰별 비선형 변환**이 없다", "깊게 쌓으면? 정답을 **훔쳐보지 않고** 학습하려면? **생성**은?"],
           ["**참조만으로**", "**시퀀스 모델을 만들면?**", "FFN · Residual · LayerNorm · Mask · 학습 · 생성"],
           notes="다음 주: 오늘의 attention 블록에 FFN, residual, LayerNorm을 붙여 층을 완성하고, mask와 teacher forcing으로 Decoder를 학습시키고, 토큰을 하나씩 생성한다.")
