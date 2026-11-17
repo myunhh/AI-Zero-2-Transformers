@@ -4,12 +4,14 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+import deckkit  # noqa: E402
+deckkit.use_theme("clean")  # Apple 디자인 원칙 테마 — import * 보다 먼저
 from deckkit import *  # noqa
 
 A = lambda p: os.path.join(HERE, "assets", p)
 OUT = os.path.join(HERE, "..", "lectures", "week06_transformer_complete.pptx")
 
-d = Deck(6, "Transformer 완성: 조립·학습·생성", date="2026-11-09")
+d = Deck(6, "Transformer 완성: 조립·학습·생성", date="2026-11-09", theme="clean")
 
 # ============================================================ 도입
 d.question("참조만으로\n시퀀스 모델을 만들면?",

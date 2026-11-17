@@ -19,9 +19,9 @@ from matplotlib.colors import LinearSegmentedColormap  # noqa: E402
 OUT = os.path.join(HERE, "assets", "week5")
 os.makedirs(OUT, exist_ok=True)
 TEAL, TEAL2, MINT, DARK, GRAY, ACC, LINE = (P[k] for k in ("TEAL", "TEAL2", "MINT", "DARK", "GRAY", "ACCENT", "LINE"))
-MINT2 = "#CFE8EE"
-ACC_BG = "#FDF1E8"
-CMAP = LinearSegmentedColormap.from_list("tealmap", ["#FFFFFF", "#CFE8EE", "#3FA7B8", "#0F6C8C"])
+MINT2 = P.get("MINT2", "#CFE8EE")
+ACC_BG = P.get("ACC_BG", "#FDF1E8")
+CMAP = LinearSegmentedColormap.from_list("seqmap", P.get("CMAP", ["#FFFFFF", "#CFE8EE", "#3FA7B8", "#0F6C8C"]))
 
 
 def save(fig, name):
@@ -171,7 +171,7 @@ def fig_arch():
         arr(ax, x + 2.2, 6.45, x + 2.2, 6.1, ms=10)
         yb = 6.05 - 1.05 * len(layers) - .55  # 점선 상자 아래쪽에 "× 6 층" 띠를 둔다
         ax.add_patch(FancyBboxPatch((x, yb), 4.4, 6.05 - yb, boxstyle="round,pad=0,rounding_size=0.1",
-                                    fc="#F4FAFB", ec=TEAL2, lw=1.8, ls="--"))
+                                    fc=P.get("BG", "#F4FAFB"), ec=TEAL2, lw=1.8, ls="--"))
         ax.text(x + 4.25, yb + 0.07, "× 6 층", ha="right", va="bottom", fontsize=15, color=TEAL, fontweight="bold")
         y = 6.05
         for i, (t, fc) in enumerate(layers):

@@ -4,12 +4,14 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+import deckkit  # noqa: E402
+deckkit.use_theme("clean")  # Apple 디자인 원칙 테마 — import * 보다 먼저
 from deckkit import *  # noqa
 
 A = lambda p: os.path.join(HERE, "assets", p)
 OUT = os.path.join(HERE, "..", "lectures", "week05_attention.pptx")
 
-d = Deck(5, "Attention: 원문을 다시 찾아보기", date="2026-11-02")
+d = Deck(5, "Attention: 원문을 다시 찾아보기", date="2026-11-02", theme="clean")
 
 # ============================================================ 도입
 d.question("필요할 때 원문을\n다시 찾아보면?",

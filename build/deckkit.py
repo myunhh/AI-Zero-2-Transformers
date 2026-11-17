@@ -1153,4 +1153,5 @@ def use_theme(name):
     PALETTE_HEX.update({"TEAL": "#0071E3", "TEAL2": "#5AA9F0", "MINT": "#E8F1FC", "DARK": "#1D1D1F",
                         "GRAY": "#6E6E73", "ACCENT": "#E8590C", "LINE": "#D2D2D7",
                         "MINT2": "#D6E6FA", "ACC_BG": "#FFF3EA", "BG": "#F5F5F7", "MID": "#9CC5F2",
-                        "OFF": "#E8E8ED"})
+                        "OFF": "#E8E8ED", "GRID": "#ECECF0", "ACC_MID": "#FBD3B8",
+                        "CMAP": ["#FFFFFF", "#D6E6FA", "#5AA9F0", "#0060C0"]})

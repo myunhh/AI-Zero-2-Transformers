@@ -18,8 +18,8 @@ _fm.fontManager._findfont_cached.cache_clear()
 OUT = os.path.join(HERE, "assets", "week6")
 os.makedirs(OUT, exist_ok=True)
 TEAL, TEAL2, MINT, DARK, GRAY, ACC, LINE = (P[k] for k in ("TEAL", "TEAL2", "MINT", "DARK", "GRAY", "ACCENT", "LINE"))
-MINT2 = "#CFE8EE"
-ACC_BG = "#FDF1E8"
+MINT2 = P.get("MINT2", "#CFE8EE")
+ACC_BG = P.get("ACC_BG", "#FDF1E8")
 
 
 def save(fig, name):
@@ -175,7 +175,7 @@ def fig_encdec():
     ax.axis("off")
     # encoder
     ax.add_patch(FancyBboxPatch((0.3, 2.2), 4.0, 4.6, boxstyle="round,pad=0.05,rounding_size=0.2",
-                                fc="#F6FAFB", ec=TEAL, lw=1.6, ls="--"))
+                                fc=P.get("BG", "#F6FAFB"), ec=TEAL, lw=1.6, ls="--"))
     ax.text(0.52, 4.5, "Encoder 층 × L", fontsize=12, fontweight="bold", color=TEAL, rotation=90, ha="center", va="center")
     blk(ax, 0.8, 2.6, 3.0, 0.85, "Self-Attention (MHA)\nQ,K,V ← X · padding mask", fs=9.5)
     blk(ax, 0.8, 3.6, 3.0, 0.5, "Add & LayerNorm", fc=ACC_BG, ec=ACC, fs=10)
@@ -189,7 +189,7 @@ def fig_encdec():
     arr(ax, 2.3, 5.85, 2.3, 7.4)
     # decoder
     ax.add_patch(FancyBboxPatch((5.4, 2.2), 4.3, 6.0, boxstyle="round,pad=0.05,rounding_size=0.2",
-                                fc="#F6FAFB", ec=TEAL, lw=1.6, ls="--"))
+                                fc=P.get("BG", "#F6FAFB"), ec=TEAL, lw=1.6, ls="--"))
     ax.text(5.63, 5.2, "Decoder 층 × L", fontsize=12, fontweight="bold", color=TEAL, rotation=90, ha="center", va="center")
     blk(ax, 5.9, 2.6, 3.3, 0.85, "Masked Self-Attention\ncausal + target padding", fs=9.5)
     blk(ax, 5.9, 3.6, 3.3, 0.45, "Add & LayerNorm", fc=ACC_BG, ec=ACC, fs=10)
@@ -240,7 +240,7 @@ def fig_lr():
     ax.set_ylim(0, 7.8)
     ax.set_xticks([4000, 25000, 50000, 75000, 100000])
     ax.set_xticklabels(["4k", "25k", "50k", "75k", "100k"])
-    ax.grid(axis="y", color="#E8EEF1", lw=0.8)
+    ax.grid(axis="y", color=P.get("GRID", "#E8EEF1"), lw=0.8)
     for sp in ("top", "right"):
         ax.spines[sp].set_visible(False)
     ax.set_title("d = 512, w = 4000 (원형 Base 설정으로 계산)", fontsize=11, color=GRAY, loc="left")
@@ -267,7 +267,7 @@ def fig_kv():
                                 fc=ACC_BG, ec=ACC, lw=1.6))
     ax.text(6.05, 4.83, "KV Cache (층 ℓ = 1..L 각각)", fontsize=11.5, color=ACC, fontweight="bold")
     for j in range(5):
-        fc = MINT2 if j < 3 else ("white" if j == 4 else "#F7D9C2")
+        fc = MINT2 if j < 3 else ("white" if j == 4 else P.get("ACC_MID", "#F7D9C2"))
         blk(ax, 6.05 + j * 1.12, 4.0, 1.0, 0.55, ["K1,V1", "K2,V2", "K3,V3", "K4,V4", "…"][j], fc=fc,
             ec=ACC if j == 3 else TEAL, fs=11)
     # decode
@@ -311,7 +311,7 @@ def fig_mem():
     ax.set_xlim(400, N[-1] * 3.3)
     ax.set_xlabel("시퀀스 길이 N", fontsize=11)
     ax.set_ylabel("GiB (FP16, B=1)", fontsize=11)
-    ax.grid(color="#E8EEF1", lw=0.8)
+    ax.grid(color=P.get("GRID", "#E8EEF1"), lw=0.8)
     for sp in ("top", "right"):
         ax.spines[sp].set_visible(False)
     ax.set_title("L=32, d=4096, d_h=128 가정 · 이론 추정(실측 아님)", fontsize=10, color=GRAY, loc="left")
@@ -339,7 +339,7 @@ def fig_flops():
     ax.set_xlabel("길이 N (d=512, d_ff=2048)", fontsize=11)
     ax.set_ylabel("GMACs / 샘플 / 층", fontsize=11)
     ax.legend(frameon=False, fontsize=9.5, loc="upper left")
-    ax.grid(axis="y", color="#E8EEF1", lw=0.8)
+    ax.grid(axis="y", color=P.get("GRID", "#E8EEF1"), lw=0.8)
     ax.set_axisbelow(True)
     for sp in ("top", "right"):
         ax.spines[sp].set_visible(False)
@@ -366,7 +366,7 @@ def fig_archs():
         ax.text(2, 5.75, ex, ha="center", fontsize=10.5, color=GRAY)
         top = 1.3 + 0.95 * len(layers)
         ax.add_patch(FancyBboxPatch((0.5, 1.15), 3.0, top - 1.0, boxstyle="round,pad=0.04,rounding_size=0.15",
-                                    fc="#F6FAFB", ec=col, lw=1.5, ls="--"))
+                                    fc=P.get("BG", "#F6FAFB"), ec=col, lw=1.5, ls="--"))
         for i, (t, fc) in enumerate(layers):
             blk(ax, 0.7, 1.3 + i * 0.95, 2.6, 0.75, t, fc=fc, ec=ACC if fc == ACC_BG else TEAL, fs=10.5)
         ax.text(3.62, (1.15 + top) / 2, "× L", fontsize=11, color=GRAY, ha="left", va="center")
@@ -437,7 +437,7 @@ def fig_genealogy():
                 fontweight="bold", color=col)
         ax.text(i, 0.98 if up else -0.98, t, ha="center", va="bottom" if up else "top", fontsize=12.5,
                 color=DARK, linespacing=1.15)
-    ax.fill_between([11.5, len(ev) - 0.3], -1.85, 2.7, color="#F3F6F8", zorder=0)
+    ax.fill_between([11.5, len(ev) - 0.3], -1.85, 2.7, color=P.get("BG", "#F3F6F8"), zorder=0)
     ax.text(13.5, 2.4, "2017 이후 (확장 학습)", ha="center", fontsize=13, color=GRAY, fontweight="bold")
     qs = [("1주", "배울 수 있을까?", 0, 1.4), ("2주", "직선으로 안 되면?", 1, 2.4),
           ("3주", "공간 구조는?", 3, 3.4), ("4주", "순서·먼 기억은?", 4, 8.4),
