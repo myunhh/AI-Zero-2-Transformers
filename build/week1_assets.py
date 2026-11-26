@@ -311,7 +311,7 @@ def derivative():
     ax.text(3, 1.2, "바닥 w = 3 : L = 0\n(ŷ = 6 = 정답)", fontsize=12.5, color=G, ha="center")
     ax.annotate("", xy=(2.8, 0.5), xytext=(1.2, 7.5),
                 arrowprops=dict(arrowstyle="-|>", color=L, lw=1.6, ls="--", mutation_scale=16))
-    ax.text(-0.15, 3.4, "어느 쪽으로, 얼마나\n움직여야 하나? → Part 4", fontsize=12.5, color=D, ha="left")
+    ax.text(-0.15, 3.4, "어느 쪽으로, 얼마나\n움직여야 하나? → Part 5", fontsize=12.5, color=D, ha="left")
     _save(fig, "loss_bowl.png")
 
     # (b) 미분 슬라이드용: 접선 + 한 걸음 (슬라이드에서 가로 폭에 맞춰 들어가도록 넓은 비율)
