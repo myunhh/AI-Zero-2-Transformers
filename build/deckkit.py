@@ -83,6 +83,8 @@ STAGES = {
     "정리": (TEAL, WHITE),
     "도입": (SKY, WHITE),
     "실습": (INK, WHITE),
+    "논문": (TEAL, WHITE),
+    "결과": ("2E8F8F", WHITE),
 }
 
 
@@ -1010,6 +1012,50 @@ class Deck:
                     color=TEAL, anchor="m", gap=0)
         ctx.textbox(goals, Box(R.x + 0.2, R.y + 0.55, R.w - 0.4, R.h - 0.65), size=15, min_size=10,
                     bullets=True, gap=0.3)
+        return ctx
+
+    def paper_map(self, rows, notes=None, title="이번 주의 논문",
+                  lead="시간 순서대로 — 각 논문은 앞 논문이 남긴 문제에서 출발한다"):
+        """rows: [(연도, 논문(저자·제목), 이 주에서 배우는 것, 앞 논문의 어떤 한계를)]."""
+        notes = notes or ("이번 주에 읽는 논문을 시간 순서로 본다. 각 논문이 바로 앞의 어떤 한계를 풀었는지 한 줄씩 짚는다. "
+                          + " / ".join(f"{plain(str(r[0]))} {plain(r[1])}: {plain(r[2])}" for r in rows))
+        ctx = self.slide(title, lead=lead, stage="논문", notes=notes)
+        ctx.table(["연도", "논문", "이 주에서 배우는 것", "앞 논문의 어떤 한계를"],
+                  [[str(r[0]), r[1], r[2], r[3]] for r in rows], widths=[1.0, 3.9, 3.7, 3.5], size=15,
+                  first_col_bold=True)
+        return ctx
+
+    def paper(self, cite, title, venue, problem, idea, read, url="", result=None, notes=None, lead=None,
+              stage="논문"):
+        """논문 한 편을 여는 카드 슬라이드.
+        cite = "Rosenblatt (1958)", title = 원제, venue = 학회·저널 / problem·idea·read·result = 한두 줄 텍스트."""
+        notes = notes or (f"{plain(cite)} — {plain(title)} ({plain(venue)}). 풀려던 문제: {plain(problem)} "
+                          f"핵심 아이디어: {plain(idea)} " + (f"결과: {plain(result)} " if result else "")
+                          + f"먼저 읽을 곳: {plain(read)}")
+        ctx = self.slide(f"논문 · {cite}", lead=lead or title, stage=stage, notes=notes)
+        L, R = ctx.cols(0.34, gap=0.45)
+        card = ctx.rect(L, fill_color=TINT)
+        inner = L.inset(0.3, 0.3)
+        yr = re.search(r"(\d{4})", cite)
+        ctx.textbox(yr.group(1) if yr else cite, Box(inner.x, inner.y, inner.w, 0.9), size=44, bold=True,
+                    color=TEAL, anchor="t", margin=0, gap=0, autofit=False)
+        ctx.textbox(cite.split("(")[0].strip(), Box(inner.x, inner.y + 1.0, inner.w, 0.9), size=20, bold=True,
+                    color=INK, anchor="t", margin=0, gap=0, min_size=13)
+        ctx.textbox([title, venue], Box(inner.x, inner.y + 1.95, inner.w, inner.h - 2.5), size=15, color=GRAY,
+                    anchor="t", margin=0, gap=0.25, min_size=10)
+        if url:
+            ctx.textbox(url, Box(inner.x, inner.b - 0.4, inner.w, 0.4), size=10, color=SKY, anchor="b",
+                        margin=0, gap=0, min_size=8)
+        blocks = [("풀려던 문제", problem), ("핵심 아이디어", idea)] + ([("결과", result)] if result else []) \
+            + [("먼저 읽을 곳", read)]
+        n = len(blocks)
+        bh = (R.h - 0.2 * (n - 1)) / n
+        for i, (lab, txt) in enumerate(blocks):
+            b = Box(R.x, R.y + i * (bh + 0.2), R.w, bh)
+            ctx.textbox(lab, Box(b.x, b.y, b.w, 0.36), size=14, bold=True,
+                        color=ORANGE if lab == "풀려던 문제" else TEAL, anchor="t", margin=0, gap=0, autofit=False)
+            ctx.textbox(txt, Box(b.x, b.y + 0.38, b.w, b.h - 0.38), size=17, anchor="t", margin=0, gap=0.2,
+                        min_size=11)
         return ctx
 
     def glossary(self, rows, notes=None):
