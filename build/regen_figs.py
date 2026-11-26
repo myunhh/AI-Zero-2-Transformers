@@ -65,3 +65,12 @@ if not ONLY or "figs_w1.py" in ONLY:
     deckkit.use_theme("clean")
     _cur[0] = 1.3
     runpy.run_path(os.path.join(HERE, "figs_w1.py"), run_name="__main__")
+
+# 논문 기반 그림 (주차별 독립 스크립트) — 글자 크기 배율 없이 원래 크기로
+_cur[0] = 1.0
+for _w in range(1, 7):
+    _f = f"paper_figs_w{_w}.py"
+    if (not ONLY or _f in ONLY) and os.path.exists(os.path.join(HERE, _f)):
+        deckkit.use_theme("clean")
+        runpy.run_path(os.path.join(HERE, _f), run_name="__main__")
+        print(_f)

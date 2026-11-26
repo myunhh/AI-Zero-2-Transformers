@@ -479,24 +479,28 @@ def fig_relu_grad():
 
 # ---------------------------------------------------------------- 12. ILSVRC
 def fig_ilsvrc():
-    yrs = ["2010\nNEC-UIUC", "2011\nXRCE", "2012\nAlexNet", "2013\nClarifai", "2014\nGoogLeNet", "2015\nResNet"]
-    err = [28.2, 25.8, 15.3, 11.7, 6.67, 3.57]
-    depth = ["얕은 특징+분류기", "얕은 특징+분류기", "8층", "CNN", "22층", "152층"]
+    # 수치: Russakovsky et al. (2015) Table 5·8, He et al. (2015) Table 5 (build/research/papers/week3.md)
+    yrs = ["2010\nNEC", "2011\nXRCE", "2012\nAlexNet", "2013\nClarifai", "2014\nGoogLeNet", "2015\nResNet"]
+    err = [28.2, 25.8, 15.3, 11.7, 6.66, 3.57]
+    lab = ["28.2%", "25.8%", "15.3%†", "11.7%", "6.66%", "3.57%"]
+    depth = ["손으로 설계한 특징+SVM", "손으로 설계한 특징+SVM", "CNN 7개 앙상블", "CNN 여러 개", "CNN", ""]
     cols = [SOFT, SOFT, ACC, TEAL2, TEAL2, TEAL]
-    fig, ax = plt.subplots(figsize=(7.6, 4.9))
+    fig, ax = plt.subplots(figsize=(9.0, 5.2))
     bars = ax.bar(yrs, err, color=cols, width=.62)
-    for b, e, d, c in zip(bars, err, depth, cols):
-        ax.text(b.get_x() + b.get_width() / 2, e + 0.7, f"{e}%", ha="center", fontsize=13, fontweight="bold", color=DARK)
+    for b, e, t, d, c in zip(bars, err, lab, depth, cols):
+        ax.text(b.get_x() + b.get_width() / 2, e + 0.7, t, ha="center", fontsize=13, fontweight="bold", color=DARK)
         ax.text(b.get_x() + b.get_width() / 2, e / 2, d, ha="center", va="center", fontsize=9.5,
-                color=DARK if c == SOFT else "white",
-                rotation=90 if len(d) > 4 else 0, fontweight="bold")
-    ax.annotate("2014년 2위 VGG: 7.3% (16–19층)", xy=(4.3, 7.3), xytext=(2.75, 20.5), fontsize=10.5, color=TEAL2,
+                color=DARK if c == SOFT else "white", rotation=90 if len(d) > 4 else 0, fontweight="bold")
+    ax.annotate("2014년 2위 VGG: 7.3%\n(16–19층)", xy=(4.33, 7.0), xytext=(4.0, 17.5), fontsize=10.5, color=TEAL2,
                 arrowprops=dict(arrowstyle="->", color=TEAL2))
     ax.set_ylabel("top-5 분류 오류율 (%)", fontsize=12)
     ax.set_ylim(0, 33)
     ax.tick_params(axis="x", labelsize=9.5)
     ax.spines[["top", "right"]].set_visible(False)
-    ax.set_title("ILSVRC 분류 우승 팀의 top-5 오류", fontsize=13, color=TEAL)
+    ax.set_title("ILSVRC 분류 우승 팀의 top-5 오류 (테스트)", fontsize=13, color=TEAL)
+    fig.text(0.5, -0.03, "† 외부 데이터(ImageNet Fall 2011)로 사전학습한 CNN 2개 포함 — 외부 데이터 없이 16.4%.  2015: 깊이가 다른 6개 앙상블.\n"
+             "출처: Russakovsky et al. 2015 Table 5·8, He et al. 2015 Table 5",
+             ha="center", va="top", fontsize=9, color=GRAY, linespacing=1.4)
     save(fig, "ilsvrc.png")
 
 
